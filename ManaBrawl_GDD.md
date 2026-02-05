@@ -95,7 +95,7 @@ All characters have access to these movements, with varying speeds and propertie
 **Wall Slide**
 - Automatic when touching wall while falling
 - Reduces fall speed
-- Must be pressing into the wall
+- Cannot be touching ground
 
 ### Advanced Movement (Mana-Based)
 These techniques require Mana and offer skilled players mobility advantages:
