@@ -16,7 +16,7 @@ layout_mode = 0
 offset_left = 10.0
 offset_top = 10.0
 offset_right = 310.0
-offset_bottom = 319.0
+offset_bottom = 390.0
 
 [node name="ManaLabel" type="Label" parent="." unique_id=1355113731]
 layout_mode = 0
@@ -81,3 +81,12 @@ offset_top = 175.0
 offset_right = 93.0
 offset_bottom = 198.0
 text = "Combo: 0"
+
+[node name="SpellLabel" type="RichTextLabel" parent="."]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 260.0
+offset_right = 290.0
+offset_bottom = 380.0
+bbcode_enabled = true
+text = "[1] -- [2] -- [3] -- [4] --"

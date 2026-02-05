@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Haste"
+mana_cost = 10.0
+cooldown = 2.0
+cast_type = "toggled"
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.3, 1.0, 0.5, 1)
+slow_move = 1.4
+toggle_mana_drain = 5.0

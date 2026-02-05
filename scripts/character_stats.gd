@@ -35,6 +35,12 @@ class_name CharacterStats
 @export var light_attack_damage: float = 15.0
 @export var heavy_attack_damage: float = 35.0
 @export var heavy_attack_charge_time: float = 0.5
-@export var light_attack_duration: float = 0.2  # How long hitbox is active
-@export var heavy_attack_duration: float = 0.3
+@export var light_attack_duration: float = 0.3  # How long hitbox is active (also clash window)
+@export var heavy_attack_duration: float = 0.45
 @export var knockback_force: float = 300.0  # For heavy attacks
+
+## Ranged Stats
+@export var ranged_damage: float = 8.0
+@export var ranged_speed: float = 600.0
+@export var ranged_fire_cooldown: float = 0.4  # Seconds between shots
+@export var ranged_mode_speed_mult: float = 0.7  # Movement speed multiplier while aiming

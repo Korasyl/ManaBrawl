@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Mana Blast"
+mana_cost = 30.0
+cooldown = 6.0
+cast_type = "free_aim"
+damage = 40.0
+interrupt_type = "stagger"
+projectile_speed = 400.0
+projectile_color = Color(0.2, 0.8, 1.0, 1)
+slow_move = 1.0
+toggle_mana_drain = 0.0
