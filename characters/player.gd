@@ -50,17 +50,33 @@ var coalescence_startup_timer: float = 0.0
 var coalescence_recovery_timer: float = 0.0
 var coalescence_spell_lockout: float = 0.0  # Cannot cast spells for 3s after coalescence
 
+## Interrupt state
+var is_flinched: bool = false
+var is_staggered: bool = false
+var stun_timer: float = 0.0
+const FLINCH_DURATION: float = 0.3
+const STAGGER_DURATION: float = 0.3
+
+## Block state
+var is_blocking: bool = false
+var block_broken: bool = false
+var block_broken_timer: float = 0.0
+const BLOCK_BROKEN_DURATION: float = 2.5  # GDD: 2-3 seconds
+
 ## Attack state
 var is_attacking: bool = false
 var attack_timer: float = 0.0
 var is_heavy_attack: bool = false
 var heavy_charge_timer: float = 0.0
+var is_charging_heavy: bool = false  # True while holding LMB for heavy
 var combo_window: bool = false
 var combo_count: int = 0
-var hit_bodies_this_attack: Array = []  # Track what we've hit this attack
+var hit_bodies_this_attack: Array = []
 var combo_window_timer: float = 0.0
 var can_combo: bool = false
-var landed_flinch_this_attack: bool = false  # NEW: tracks if we flinched someone
+var landed_flinch_this_attack: bool = false
+var melee_cooldown_timer: float = 0.0  # Prevents attack spam after combo
+const MELEE_COOLDOWN_DURATION: float = 0.4
 
 ## Physics
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
@@ -113,87 +129,97 @@ func _physics_process(delta):
 		respawn_timer -= delta
 		if respawn_timer <= 0:
 			respawn()
-		# Don't process anything else while dead
 		update_hud()
 		return
-	
-	# Handle dash timers
+
+	# --- Timers (always tick) ---
 	if is_dashing:
 		dash_timer -= delta
 		if dash_timer <= 0:
 			is_dashing = false
-			# Re-enable collision with enemies
 			set_collision_mask_value(2, true)
-			
-			var ctx := {"airborne": not is_on_floor()}
+			var ctx := {ContextKeys.IS_AIRBORNE: not is_on_floor()}
 			emit_signal("action_ended", "dash", ctx)
 			if attunements:
 				attunements.notify_action_ended("dash", ctx)
-	
+
 	if dash_cooldown_timer > 0:
 		dash_cooldown_timer -= delta
 		if dash_cooldown_timer <= 0:
 			dash_available = true
-	
-	# Handle wall jump lock timer
+
 	if wall_jump_lock_timer > 0:
 		wall_jump_lock_timer -= delta
-	
-	# Handle coalescence recovery
+
 	if coalescence_recovery_timer > 0:
 		coalescence_recovery_timer -= delta
 
-	# Handle coalescence spell lockout
 	if coalescence_spell_lockout > 0:
 		coalescence_spell_lockout -= delta
-	
-	# Handle attack timers
+
+	if melee_cooldown_timer > 0:
+		melee_cooldown_timer -= delta
+
+	if block_broken_timer > 0:
+		block_broken_timer -= delta
+		if block_broken_timer <= 0:
+			block_broken = false
+			if debug_hud:
+				debug_hud.log_action("[color=lime]Block restored[/color]")
+
+	# Handle stun (flinch/stagger)
+	if stun_timer > 0:
+		stun_timer -= delta
+		if stun_timer <= 0:
+			is_flinched = false
+			is_staggered = false
+
 	handle_attack_timers(delta)
-	
+
 	# Detect walls
 	is_on_wall_left = wall_check_left.is_colliding()
 	is_on_wall_right = wall_check_right.is_colliding()
-	
+
 	# Apply gravity (unless dashing or coalescing)
 	if not is_on_floor() and not is_dashing and not is_coalescing:
 		velocity.y += gravity * delta
-	
+
 	# Reset double jump when landing
 	if is_on_floor():
 		can_double_jump = true
 		wall_jump_lock_timer = 0.0
-	
-	# Handle coalescence
+
+	# --- Stunned: no actions, just slide to a stop ---
+	var is_stunned := is_flinched or is_staggered
+	if is_stunned:
+		if is_on_floor():
+			velocity.x = lerp(velocity.x, 0.0, 0.15)
+		move_and_slide()
+		update_hud()
+		update_facing_direction()
+		update_animation()
+		return
+
+	# --- Normal action processing ---
+	handle_blocking(delta)
 	handle_coalescence(delta)
-	
-	# Handle wall mechanics (not while coalescing or attacking)
-	if not is_coalescing and not is_attacking:
+
+	if not is_coalescing and not is_attacking and not is_blocking:
 		handle_wall_mechanics(delta)
-	
-	# Handle dash input (not while coalescing or attacking)
-	if not is_coalescing and not is_attacking:
+
+	if not is_coalescing and not is_attacking and not is_blocking:
 		handle_dash()
-	
-	# Handle attack input
+
 	handle_attack_input()
-	
-	# Handle movement input (only if not dashing, not wall jump locked, not coalescing, not attacking)
+
+	# Movement: not while dashing, wall jump locked, coalescing, recovering, attacking, or blocking
 	if not is_dashing and wall_jump_lock_timer <= 0 and not is_coalescing and coalescence_recovery_timer <= 0 and not is_attacking:
 		handle_movement(delta)
-	
-	# Passive mana regen (or enhanced if coalescing)
+
 	regenerate_mana(delta)
-	
-	# Apply movement
 	move_and_slide()
-	
-	# Update debug display
 	update_hud()
-	
-	# Update facing direction based on mouse
 	update_facing_direction()
-	
-	# Update animation
 	update_animation()
 
 func handle_movement(delta):
@@ -227,6 +253,10 @@ func handle_movement(delta):
 			else:
 				# If we jumped from standing still, allow walk-speed air control
 				target_speed = stats.walk_speed
+
+	# Block movement penalty (GDD: significantly slows movement)
+	if is_blocking:
+		target_speed = stats.block_move_speed
 
 	# Apply attunement move speed multiplier
 	if attunements:
@@ -303,7 +333,15 @@ func update_hud():
 	
 	# Update state
 	var state = "Idle"
-	if is_coalescing:
+	if is_flinched:
+		state = "FLINCHED (%.1fs)" % stun_timer
+	elif is_staggered:
+		state = "STAGGERED (%.1fs)" % stun_timer
+	elif is_blocking:
+		state = "BLOCKING"
+	elif block_broken:
+		state = "Block Broken (%.1fs)" % block_broken_timer
+	elif is_coalescing:
 		if coalescence_startup_timer > 0:
 			state = "Coalescing... (%.1fs)" % coalescence_startup_timer
 		else:
@@ -314,6 +352,10 @@ func update_hud():
 		state = "Spell Locked (%.1fs)" % coalescence_spell_lockout
 	elif is_dashing:
 		state = "DASHING"
+	elif is_charging_heavy:
+		state = "Charging Heavy (%.1fs)" % heavy_charge_timer
+	elif melee_cooldown_timer > 0:
+		state = "Melee CD (%.1fs)" % melee_cooldown_timer
 	elif is_wall_clinging:
 		state = "Wall Cling"
 	elif is_wall_sliding:
@@ -421,6 +463,24 @@ func handle_wall_mechanics(delta):
 					debug_hud.log_action("Wall Jump", -spent)
 
 
+func handle_blocking(delta):
+	# GDD: Hold Alt to block. Ground only. Constant mana drain. Cannot block while airborne.
+	if Input.is_action_pressed("block") and is_on_floor() and not block_broken and not is_attacking and not is_coalescing and not is_dashing:
+		var spent := use_mana(stats.block_mana_drain * delta, "block")
+		if spent > 0.0:
+			if not is_blocking:
+				is_blocking = true
+				if debug_hud:
+					debug_hud.log_action("[color=cyan]Blocking[/color]")
+		else:
+			# Ran out of mana
+			if is_blocking:
+				is_blocking = false
+				if debug_hud:
+					debug_hud.log_action("[color=gray]Block dropped (no mana)[/color]")
+	else:
+		is_blocking = false
+
 func handle_coalescence(delta):
 	# Check if player wants to start/continue coalescing
 	if Input.is_action_pressed("coalesce") and coalescence_recovery_timer <= 0:
@@ -455,8 +515,12 @@ func update_animation():
 	
 	# Determine which animation to play based on state
 	var anim = "idle"
-	
-	if is_coalescing:
+
+	if is_flinched or is_staggered:
+		anim = "hit"
+	elif is_blocking:
+		anim = "block"
+	elif is_coalescing:
 		# Different coalesce animations based on ground vs air
 		if is_on_floor():
 			anim = "coalesce_ground"
@@ -509,42 +573,48 @@ func handle_attack_timers(delta):
 			if debug_hud:
 				debug_hud.log_action("[color=gray]Combo window expired[/color]")
 	
-	# Handle heavy attack charging
-	if Input.is_action_pressed("light_attack") and not is_attacking:
+	# Handle heavy attack charging — track is_charging_heavy for flinch immunity
+	if Input.is_action_pressed("light_attack") and not is_attacking and not is_blocking:
 		heavy_charge_timer += delta
+		if heavy_charge_timer >= stats.heavy_attack_charge_time:
+			is_charging_heavy = true
+	else:
+		if not is_attacking:
+			is_charging_heavy = false
 
 func handle_attack_input():
-	# Can't attack while coalescing, dashing, or in recovery
-	if is_coalescing or is_dashing or coalescence_recovery_timer > 0 or wall_jump_lock_timer > 0:
+	# Can't attack while coalescing, dashing, recovery, blocking, or on melee cooldown
+	if is_coalescing or is_dashing or coalescence_recovery_timer > 0 or wall_jump_lock_timer > 0 or is_blocking:
 		return
-	
+	if melee_cooldown_timer > 0:
+		return
+
 	# Light attack (tap) or Heavy attack (hold and release)
 	if Input.is_action_just_released("light_attack") and not is_attacking:
 		if heavy_charge_timer >= stats.heavy_attack_charge_time:
 			# Heavy attack (can be used as combo ender)
 			perform_heavy_attack()
-			combo_count = 0  # Reset combo on heavy
+			combo_count = 0
 			can_combo = false
 			combo_window_timer = 0.0
 		else:
 			# Light attack
 			if combo_count == 0:
-				# First light attack
 				perform_light_attack()
 			elif can_combo and combo_count == 1:
 				# Second light in combo (guaranteed if first flinched)
 				perform_light_attack()
 			else:
-				# Outside combo window, restart
 				combo_count = 0
 				can_combo = false
 				perform_light_attack()
-		
+
 		heavy_charge_timer = 0.0
-	
-	# Reset charge timer if button released
+		is_charging_heavy = false
+
 	if Input.is_action_just_released("light_attack"):
 		heavy_charge_timer = 0.0
+		is_charging_heavy = false
 
 func perform_light_attack():
 	is_attacking = true
@@ -577,22 +647,21 @@ func perform_heavy_attack():
 
 func end_attack():
 	is_attacking = false
-	
-	# Disable hitbox
 	melee_collision.disabled = true
-	
-	# If this was the first light attack AND we landed a flinch, open combo window
+
+	# If first light landed a flinch, open combo window
 	if combo_count == 1 and not is_heavy_attack and landed_flinch_this_attack:
 		can_combo = true
-		combo_window_timer = 0.5  # 0.5 second window to input second attack
+		combo_window_timer = 0.5
 		if debug_hud:
 			debug_hud.log_action("[color=lime]Combo available![/color]")
-	elif combo_count >= 2:
-		# Combo finished (either hit 2nd attack or missed)
+	elif combo_count >= 2 or is_heavy_attack:
+		# Combo finished or heavy used — apply melee cooldown (GDD: prevents spam)
 		combo_count = 0
 		can_combo = false
 		combo_window_timer = 0.0
-	
+		melee_cooldown_timer = MELEE_COOLDOWN_DURATION
+
 	is_heavy_attack = false
 
 func _on_melee_hitbox_body_entered(hit_body):
@@ -646,30 +715,81 @@ func _on_melee_hitbox_body_entered(hit_body):
 	# Determine interrupt type
 	var interrupt_type := "flinch" if not is_heavy_attack else "stagger"
 
+	# --- Clash detection ---
+	# If target is also actively attacking, check for clash
+	var target_is_attacking := hit_body.get("is_attacking") == true
+	if target_is_attacking:
+		var target_is_heavy := hit_body.get("is_heavy_attack") == true
+		if not is_heavy_attack and not target_is_heavy:
+			# Light vs Light: both cancelled, no damage, no flinch
+			end_attack()
+			if hit_body.has_method("end_attack"):
+				hit_body.end_attack()
+			elif hit_body.has_method("end_dummy_attack"):
+				hit_body.end_dummy_attack()
+			if debug_hud:
+				debug_hud.log_action("[color=white]CLASH! (Light vs Light)[/color]")
+			return
+		elif is_heavy_attack and target_is_heavy:
+			# Heavy vs Heavy: both cancelled, mutual knockback, no damage
+			var clash_dir := 1 if not animated_sprite.flip_h else -1
+			velocity = Vector2(-clash_dir * stats.knockback_force * 0.5, -200)
+			if hit_body is CharacterBody2D:
+				hit_body.velocity = Vector2(clash_dir * stats.knockback_force * 0.5, -200)
+			end_attack()
+			if hit_body.has_method("end_attack"):
+				hit_body.end_attack()
+			elif hit_body.has_method("end_dummy_attack"):
+				hit_body.end_dummy_attack()
+			if debug_hud:
+				debug_hud.log_action("[color=white]CLASH! (Heavy vs Heavy)[/color]")
+			return
+		# Mixed (light vs heavy, heavy vs light): no clash, stronger wins
+
+	# Check if target is blocking (before calling take_damage so we can adjust mana)
+	var target_is_blocking := hit_body.get("is_blocking") == true if hit_body.get("is_blocking") != null else false
+
 	# Deal damage with interrupt type
 	ctx[ContextKeys.DAMAGE] = final_damage
 	ctx[ContextKeys.INTERRUPT] = interrupt_type
 	hit_body.take_damage(final_damage, knockback, interrupt_type, ctx)
-	
-	# Track if we landed a flinch (for combo system)
-	if interrupt_type == "flinch":
-		landed_flinch_this_attack = true
+
+	# Determine mana gain based on what happened
+	var base_gain: float
+	var gain_key: String
+	var hit_log: String
+
+	if target_is_blocking and interrupt_type == "stagger":
+		# Shield break — GDD: attacker gains significant bonus mana, no damage dealt
+		base_gain = stats.heavy_shield_break_bonus
+		gain_key = ModKeys.HEAVY_MELEE_HIT_MANA_GAIN
+		hit_log = "[color=yellow]SHIELD BREAK![/color]"
+	elif target_is_blocking and interrupt_type == "flinch":
+		# Blocked hit — GDD: minor mana gain
+		base_gain = stats.melee_blocked_mana_gain
+		gain_key = ModKeys.MELEE_HIT_MANA_GAIN
+		hit_log = "[color=gray]Blocked[/color]"
+	else:
+		# Clean hit
+		base_gain = float(stats.heavy_melee_hit_mana_gain if is_heavy_attack else stats.melee_hit_mana_gain)
+		gain_key = ModKeys.HEAVY_MELEE_HIT_MANA_GAIN if is_heavy_attack else ModKeys.MELEE_HIT_MANA_GAIN
+		hit_log = "HIT!"
+		# Track flinch for combo system (only on clean hit)
+		if interrupt_type == "flinch":
+			landed_flinch_this_attack = true
+
+	var final_gain: float = base_gain
+	if attunements:
+		final_gain = float(attunements.modify_mana_gain(gain_key, base_gain, ctx))
 
 	# Signals + attunement notification
 	emit_signal("dealt_damage", final_damage, hit_body, ctx)
 	if attunements:
 		attunements.notify_dealt_damage(final_damage, hit_body, ctx)
 
-	# Mana gain (GDD: Heavy > Light)
-	var base_gain: float = float(stats.heavy_melee_hit_mana_gain if is_heavy_attack else stats.melee_hit_mana_gain)
-	var final_gain: float = base_gain
-	var gain_key := ModKeys.HEAVY_MELEE_HIT_MANA_GAIN if is_heavy_attack else ModKeys.MELEE_HIT_MANA_GAIN
-	if attunements:
-		final_gain = float(attunements.modify_mana_gain(gain_key, base_gain, ctx))
-
 	current_mana = min(current_mana + final_gain, stats.max_mana)
 	if debug_hud:
-		debug_hud.log_action("HIT!", final_gain)
+		debug_hud.log_action(hit_log, final_gain)
 
 func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) -> void:
 	if new_stats == null:
@@ -691,15 +811,23 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 		current_health = stats.max_health
 		current_mana = stats.max_mana
 
-	# Any state cleanup you want when "switching characters"
+	# State cleanup when switching characters
 	is_attacking = false
 	is_coalescing = false
 	is_dashing = false
+	is_blocking = false
+	is_flinched = false
+	is_staggered = false
+	is_charging_heavy = false
+	block_broken = false
+	stun_timer = 0.0
 	attack_timer = 0.0
 	heavy_charge_timer = 0.0
 	coalescence_startup_timer = 0.0
 	coalescence_recovery_timer = 0.0
 	coalescence_spell_lockout = 0.0
+	block_broken_timer = 0.0
+	melee_cooldown_timer = 0.0
 
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
@@ -748,18 +876,17 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 
 		return
 	
-	# Coalescence grants flinch immunity (GDD: immune to Flinch, vulnerable to Stagger)
-	if is_coalescing and interrupt_type == "flinch":
-		if debug_hud:
-			debug_hud.log_action("[color=gray]Flinch ignored (Coalescing)[/color]")
-		# Still take damage but ignore the interrupt
+	# --- Check flinch immunity ---
+	# Coalescence: immune to flinch, vulnerable to stagger (GDD)
+	# Heavy attack windup/active: immune to flinch, vulnerable to stagger (GDD)
+	var flinch_immune := is_coalescing or (is_attacking and is_heavy_attack) or is_charging_heavy
+	if interrupt_type == "flinch" and flinch_immune:
+		# Take damage but ignore the interrupt entirely
 		current_health -= damage
-		if animated_sprite:
-			animated_sprite.modulate = Color.RED
-			await get_tree().create_timer(0.1).timeout
-			if not is_dead:
-				animated_sprite.modulate = Color.WHITE
+		_flash_damage()
 		if debug_hud:
+			var reason_str := "Coalescing" if is_coalescing else "Heavy Armor"
+			debug_hud.log_action("[color=gray]Flinch ignored (%s)[/color]" % reason_str)
 			debug_hud.log_action("[color=red]Took %.0f damage![/color]" % damage, -damage)
 		emit_signal("took_damage", damage, ctx.get(ContextKeys.SOURCE, null), ctx)
 		if attunements:
@@ -768,17 +895,35 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 			die()
 		return
 
-	# Apply damage
+	# --- Block absorption ---
+	if is_blocking and interrupt_type == "flinch":
+		# Block stops light attacks — no damage, minor mana gain for attacker
+		ctx[ContextKeys.IS_BLOCKED] = true
+		if debug_hud:
+			debug_hud.log_action("[color=cyan]BLOCKED![/color]")
+		emit_signal("took_damage", 0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
+		if attunements:
+			attunements.notify_took_damage(0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
+		return
+
+	if is_blocking and interrupt_type == "stagger":
+		# Heavy attack shatters the block (GDD: no damage, no knockback)
+		is_blocking = false
+		block_broken = true
+		block_broken_timer = BLOCK_BROKEN_DURATION
+		ctx[ContextKeys.IS_SHIELD_BREAK] = true
+		if debug_hud:
+			debug_hud.log_action("[color=red]SHIELD BREAK![/color]")
+		emit_signal("took_damage", 0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
+		if attunements:
+			attunements.notify_took_damage(0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
+		return
+
+	# --- Apply damage ---
 	current_health -= damage
+	_flash_damage()
 
-	# Visual feedback - flash the sprite
-	if animated_sprite:
-		animated_sprite.modulate = Color.RED
-		await get_tree().create_timer(0.1).timeout
-		if not is_dead:
-			animated_sprite.modulate = Color.WHITE
-
-	# Stagger interrupts coalescence (GDD) — check before knockback clears state
+	# Stagger interrupts coalescence — check before knockback clears state
 	if is_coalescing and interrupt_type == "stagger":
 		is_coalescing = false
 		coalescence_recovery_timer = 0.5
@@ -793,30 +938,64 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 		is_attacking = false
 		is_coalescing = false
 		is_dashing = false
+		is_charging_heavy = false
+		heavy_charge_timer = 0.0
+		melee_collision.disabled = true
 
-	# Log damage
+	# Apply flinch/stagger hitstun
+	match interrupt_type:
+		"flinch":
+			is_flinched = true
+			is_staggered = false
+			stun_timer = FLINCH_DURATION
+			# Cancel current attack
+			if is_attacking:
+				end_attack()
+			is_charging_heavy = false
+			heavy_charge_timer = 0.0
+		"stagger":
+			is_flinched = false
+			is_staggered = true
+			stun_timer = STAGGER_DURATION
+			# Stagger cancels everything
+			if is_attacking:
+				end_attack()
+			is_charging_heavy = false
+			heavy_charge_timer = 0.0
+			is_blocking = false
+
 	if debug_hud:
 		debug_hud.log_action("[color=red]Took %.0f damage![/color]" % damage, -damage)
 
-	# Emit signal with actual context
 	emit_signal("took_damage", damage, ctx.get(ContextKeys.SOURCE, null), ctx)
 	if attunements:
 		attunements.notify_took_damage(damage, ctx.get(ContextKeys.SOURCE, null), ctx)
-	
-	# Check for death
+
 	if current_health <= 0:
 		die()
+
+func _flash_damage():
+	if animated_sprite:
+		animated_sprite.modulate = Color.RED
+		await get_tree().create_timer(0.1).timeout
+		if not is_dead:
+			animated_sprite.modulate = Color.WHITE
 
 func die():
 	is_dead = true
 	respawn_timer = RESPAWN_TIME
 	current_health = 0
 	velocity = Vector2.ZERO
-	
+
 	# Cancel all actions
 	is_attacking = false
 	is_coalescing = false
 	is_dashing = false
+	is_blocking = false
+	is_flinched = false
+	is_staggered = false
+	is_charging_heavy = false
+	stun_timer = 0.0
 	melee_collision.disabled = true
 	
 	# Visual feedback
@@ -830,9 +1009,17 @@ func respawn():
 	is_dead = false
 	current_health = stats.max_health
 	current_mana = stats.max_mana
-	
-	# Reset position to spawn (for now, just reset velocity)
 	velocity = Vector2.ZERO
+
+	# Reset all combat states
+	is_flinched = false
+	is_staggered = false
+	stun_timer = 0.0
+	is_blocking = false
+	block_broken = false
+	block_broken_timer = 0.0
+	is_charging_heavy = false
+	melee_cooldown_timer = 0.0
 	
 	# Visual feedback
 	if animated_sprite:
