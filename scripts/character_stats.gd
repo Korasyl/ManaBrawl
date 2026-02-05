@@ -27,6 +27,10 @@ class_name CharacterStats
 @export var melee_blocked_mana_gain: float = 3.0
 @export var heavy_shield_break_bonus: float = 20.0
 
+## Block Stats
+@export var block_mana_drain: float = 8.0  # Mana per second while blocking
+@export var block_move_speed: float = 80.0  # Significantly slowed
+
 ## Attack Stats
 @export var light_attack_damage: float = 15.0
 @export var heavy_attack_damage: float = 35.0
