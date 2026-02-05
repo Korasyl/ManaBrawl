@@ -717,9 +717,9 @@ func _on_melee_hitbox_body_entered(hit_body):
 
 	# --- Clash detection ---
 	# If target is also actively attacking, check for clash
-	var target_is_attacking := hit_body.get("is_attacking") == true
+	var target_is_attacking: bool = hit_body.get("is_attacking") == true
 	if target_is_attacking:
-		var target_is_heavy := hit_body.get("is_heavy_attack") == true
+		var target_is_heavy: bool = hit_body.get("is_heavy_attack") == true
 		if not is_heavy_attack and not target_is_heavy:
 			# Light vs Light: both cancelled, no damage, no flinch
 			end_attack()
@@ -747,7 +747,7 @@ func _on_melee_hitbox_body_entered(hit_body):
 		# Mixed (light vs heavy, heavy vs light): no clash, stronger wins
 
 	# Check if target is blocking (before calling take_damage so we can adjust mana)
-	var target_is_blocking := hit_body.get("is_blocking") == true if hit_body.get("is_blocking") != null else false
+	var target_is_blocking: bool = hit_body.get("is_blocking") == true
 
 	# Deal damage with interrupt type
 	ctx[ContextKeys.DAMAGE] = final_damage
