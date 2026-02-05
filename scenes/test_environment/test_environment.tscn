@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://gn3trux6bfkf" path="res://scenes/ui/stats_switcher.tscn" id="4_fnpii"]
 [ext_resource type="Script" uid="uid://e8o28f46ys1y" path="res://scenes/ui/stats_switcher.gd" id="5_14n3e"]
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -80,3 +81,10 @@ offset_right = -849.0
 offset_bottom = 439.0
 script = ExtResource("5_14n3e")
 player_path = NodePath("../Player")
+
+[node name="DummyBehaviorSelector" parent="." instance=ExtResource("7_bhvr")]
+offset_left = -849.0
+offset_top = 475.0
+offset_right = -849.0
+offset_bottom = 475.0
+dummy_path = NodePath("../TrainingDummy")
