@@ -23,10 +23,11 @@ func get_cost_mult(action_id: String) -> float:
 func get_value_mult(action_id: String) -> float:
 	return float(action_value_mults.get(action_id, 1.0))
 
-func modify_value(_player: Node, key: String, base_value: float, ctx: Dictionary) -> float:
-	# Default behavior: multiply by per-key value multiplier only.
-	# (Global multipliers are handled in the manager so stacking stays consistent.)
-	return base_value * get_value_mult(key)
+func modify_value(_player: Node, _key: String, value: float, _ctx: Dictionary) -> float:
+	# Base implementation: pass-through. Static multipliers (damage_mult, mana_gain_mult,
+	# action_value_mults) are already applied by AttunementManager before this is called.
+	# Override in subclasses for context-aware conditional modifiers.
+	return value
 
 # --- Event hooks (optional) ---
 # These are intentionally generic. You can subclass Attunement later for special behavior.

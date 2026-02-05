@@ -86,14 +86,16 @@ func get_damage_mult(value_key: String) -> float:
 	return mult
 
 func modify_damage(value_key: String, base_value: float, ctx: Dictionary = {}) -> float:
-	var result: float = float(base_value)
-	var mult := get_damage_mult(value_key)
+	# Step 1: Apply static multipliers (global damage_mult * per-key value_mult)
+	var result: float = float(base_value) * get_damage_mult(value_key)
 
-	# Example future rule (commented out):
-	# if bool(ctx.get("is_airborne", false)):
-	#     mult *= 1.1
+	# Step 2: Let each attunement's modify_value do context-aware adjustments
+	for a in _slots:
+		if a == null:
+			continue
+		result = a.modify_value(_player, value_key, result, ctx)
 
-	return result * mult
+	return result
 
 func get_mana_gain_mult(value_key: String) -> float:
 	var mult := 1.0
@@ -104,14 +106,16 @@ func get_mana_gain_mult(value_key: String) -> float:
 	return mult
 
 func modify_mana_gain(value_key: String, base_value: float, ctx: Dictionary = {}) -> float:
-	var result: float = float(base_value)
-	var mult := get_mana_gain_mult(value_key)
+	# Step 1: Apply static multipliers (global mana_gain_mult * per-key value_mult)
+	var result: float = float(base_value) * get_mana_gain_mult(value_key)
 
-	# Example future rule (commented out):
-	# if bool(ctx.get("is_coalescing", false)):
-	#     mult *= 1.2
+	# Step 2: Let each attunement's modify_value do context-aware adjustments
+	for a in _slots:
+		if a == null:
+			continue
+		result = a.modify_value(_player, value_key, result, ctx)
 
-	return result * mult
+	return result
 
 func get_multiplier_summary() -> Dictionary:
 	return {

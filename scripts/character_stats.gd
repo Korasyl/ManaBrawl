@@ -22,7 +22,8 @@ class_name CharacterStats
 ## Mana Regen
 @export var passive_mana_regen: float = 5.0  # per second
 @export var coalescence_multiplier: float = 4.0
-@export var melee_hit_mana_gain: float = 10.0
+@export var melee_hit_mana_gain: float = 10.0  # Light attack mana gain
+@export var heavy_melee_hit_mana_gain: float = 15.0  # Heavy attack mana gain (GDD: Heavy > Light)
 @export var melee_blocked_mana_gain: float = 3.0
 @export var heavy_shield_break_bonus: float = 20.0
 

@@ -48,6 +48,7 @@ var wall_jump_lock_timer: float = 0.0  # Prevents air control right after wall j
 var is_coalescing: bool = false
 var coalescence_startup_timer: float = 0.0
 var coalescence_recovery_timer: float = 0.0
+var coalescence_spell_lockout: float = 0.0  # Cannot cast spells for 3s after coalescence
 
 ## Attack state
 var is_attacking: bool = false
@@ -141,6 +142,10 @@ func _physics_process(delta):
 	# Handle coalescence recovery
 	if coalescence_recovery_timer > 0:
 		coalescence_recovery_timer -= delta
+
+	# Handle coalescence spell lockout
+	if coalescence_spell_lockout > 0:
+		coalescence_spell_lockout -= delta
 	
 	# Handle attack timers
 	handle_attack_timers(delta)
@@ -305,6 +310,8 @@ func update_hud():
 			state = "COALESCING! (Mult Regen)"
 	elif coalescence_recovery_timer > 0:
 		state = "Recovery (%.1fs)" % coalescence_recovery_timer
+	elif coalescence_spell_lockout > 0:
+		state = "Spell Locked (%.1fs)" % coalescence_spell_lockout
 	elif is_dashing:
 		state = "DASHING"
 	elif is_wall_clinging:
@@ -369,37 +376,27 @@ func handle_wall_mechanics(delta):
 		is_wall_clinging = false
 		return
 	
-	# Only do wall mechanics if in air
-	if not is_on_floor() and on_wall and velocity.y > 0:  # Only when falling
-		# Check if player is holding toward the wall
+	# Wall mechanics: touching wall + falling + not on ground
+	if not is_on_floor() and on_wall and velocity.y > 0:
 		var input_dir = Input.get_axis("move_left", "move_right")
 		var pressing_into_wall = (is_on_wall_left and input_dir < 0) or (is_on_wall_right and input_dir > 0)
-		
-		# Wall Cling: Actively holding toward wall
+
+		# Wall Cling: Pressing into wall with cling enabled and mana available
 		if pressing_into_wall and movement_data.can_wall_cling:
-			# Try to drain mana
 			var spent := use_mana(stats.wall_cling_drain * delta, "wall_cling")
-			var mana_drained := spent > 0.0
-			
-			if mana_drained:
-				# Enough mana - keep clinging
+			if spent > 0.0:
 				is_wall_clinging = true
 				is_wall_sliding = false
 				velocity.y = 0  # Stop falling completely
-				
-				# Log mana drain occasionally (every 0.5s or so)
-				if debug_hud and int(Time.get_ticks_msec() / 500) % 2 == 0:
-					pass  # Could log here but might be spammy
 			else:
-				# Not enough mana - start sliding instead
+				# No mana — fall back to wall slide
 				is_wall_clinging = false
 				is_wall_sliding = true
 				velocity.y = movement_data.wall_slide_speed
-		
-		# Wall Slide: Just touching wall but not pressing into it
 		else:
-			is_wall_sliding = true
+			# Wall Slide: Passive, just touching wall while falling (GDD)
 			is_wall_clinging = false
+			is_wall_sliding = true
 			velocity.y = movement_data.wall_slide_speed
 	else:
 		is_wall_sliding = false
@@ -430,7 +427,7 @@ func handle_coalescence(delta):
 		if not is_coalescing:
 			# Start coalescence
 			is_coalescing = true
-			coalescence_startup_timer = 0.65  # 0.65 second startup
+			coalescence_startup_timer = 1.0  # 1 second startup (GDD)
 			velocity = Vector2.ZERO  # Stop all movement
 			if debug_hud:
 				debug_hud.log_action("Coalescing...")
@@ -446,7 +443,8 @@ func handle_coalescence(delta):
 		if is_coalescing:
 			# Cancel coalescence
 			is_coalescing = false
-			coalescence_recovery_timer = 0.25  # 0.25 second recovery
+			coalescence_recovery_timer = 0.5  # 0.5 second recovery (GDD)
+			coalescence_spell_lockout = 3.0  # Cannot cast spells for 3s (GDD)
 			coalescence_startup_timer = 0.0
 			if debug_hud:
 				debug_hud.log_action("Coalescence cancelled")
@@ -621,22 +619,18 @@ func _on_melee_hitbox_body_entered(hit_body):
 	var base_damage: float = float(stats.heavy_attack_damage if is_heavy_attack else stats.light_attack_damage)
 	var dmg_key := ModKeys.HEAVY_DAMAGE if is_heavy_attack else ModKeys.LIGHT_DAMAGE
 
-	# Context for attunements (ContextKeys + backwards-compatible keys)
+	# Context for attunements
 	var ctx := {
-		# Standardized keys
 		ContextKeys.SOURCE: self,
 		ContextKeys.TARGET: hit_body,
 		ContextKeys.ATTACK_ID: ("heavy_attack" if is_heavy_attack else "light_attack"),
 		ContextKeys.DAMAGE_TYPE: "melee",
-
-		# Backwards-compat keys (keep temporarily)
-		"action_id": ("heavy_attack" if is_heavy_attack else "light_attack"),
-		"hit_type": "melee",
-		"is_airborne": not is_on_floor(),
-		"is_coalescing": is_coalescing,
-		"facing_left": animated_sprite.flip_h,
+		ContextKeys.BASE_DAMAGE: base_damage,
+		ContextKeys.IS_AIRBORNE: not is_on_floor(),
+		ContextKeys.IS_COALESCING: is_coalescing,
+		ContextKeys.FACING: -1 if animated_sprite.flip_h else 1,
+		ContextKeys.COMBO_COUNT: combo_count,
 	}
-	ctx["base_damage"] = base_damage
 	
 	# Final damage (attunements decide how)
 	var final_damage: float = base_damage
@@ -666,11 +660,12 @@ func _on_melee_hitbox_body_entered(hit_body):
 	if attunements:
 		attunements.notify_dealt_damage(final_damage, hit_body, ctx)
 
-	# Mana gain
-	var base_gain: float = float(stats.melee_hit_mana_gain)
+	# Mana gain (GDD: Heavy > Light)
+	var base_gain: float = float(stats.heavy_melee_hit_mana_gain if is_heavy_attack else stats.melee_hit_mana_gain)
 	var final_gain: float = base_gain
+	var gain_key := ModKeys.HEAVY_MELEE_HIT_MANA_GAIN if is_heavy_attack else ModKeys.MELEE_HIT_MANA_GAIN
 	if attunements:
-		final_gain = float(attunements.modify_mana_gain(ModKeys.MELEE_HIT_MANA_GAIN, base_gain, ctx))
+		final_gain = float(attunements.modify_mana_gain(gain_key, base_gain, ctx))
 
 	current_mana = min(current_mana + final_gain, stats.max_mana)
 	if debug_hud:
@@ -696,7 +691,7 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 		current_health = stats.max_health
 		current_mana = stats.max_mana
 
-	# Any state cleanup you want when “switching characters”
+	# Any state cleanup you want when "switching characters"
 	is_attacking = false
 	is_coalescing = false
 	is_dashing = false
@@ -704,6 +699,7 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	heavy_charge_timer = 0.0
 	coalescence_startup_timer = 0.0
 	coalescence_recovery_timer = 0.0
+	coalescence_spell_lockout = 0.0
 
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
@@ -737,7 +733,7 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 
 		var source_name := "unknown"
 		if ctx.has(ContextKeys.SOURCE) and ctx[ContextKeys.SOURCE] != null:
-			source_name = str(ctx["source"].name)
+			source_name = str(ctx[ContextKeys.SOURCE].name)
 
 		if debug_hud:
 			debug_hud.log_action(
@@ -746,39 +742,66 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 			)
 
 		# Still notify systems that a hit attempt occurred (but did 0 damage)
-		emit_signal("took_damage", 0.0, ctx.get("source", null), ctx)
+		emit_signal("took_damage", 0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
 		if attunements:
-			attunements.notify_took_damage(0.0, ctx.get("source", null), ctx)
+			attunements.notify_took_damage(0.0, ctx.get(ContextKeys.SOURCE, null), ctx)
 
 		return
 	
+	# Coalescence grants flinch immunity (GDD: immune to Flinch, vulnerable to Stagger)
+	if is_coalescing and interrupt_type == "flinch":
+		if debug_hud:
+			debug_hud.log_action("[color=gray]Flinch ignored (Coalescing)[/color]")
+		# Still take damage but ignore the interrupt
+		current_health -= damage
+		if animated_sprite:
+			animated_sprite.modulate = Color.RED
+			await get_tree().create_timer(0.1).timeout
+			if not is_dead:
+				animated_sprite.modulate = Color.WHITE
+		if debug_hud:
+			debug_hud.log_action("[color=red]Took %.0f damage![/color]" % damage, -damage)
+		emit_signal("took_damage", damage, ctx.get(ContextKeys.SOURCE, null), ctx)
+		if attunements:
+			attunements.notify_took_damage(damage, ctx.get(ContextKeys.SOURCE, null), ctx)
+		if current_health <= 0:
+			die()
+		return
+
 	# Apply damage
 	current_health -= damage
-	
+
 	# Visual feedback - flash the sprite
 	if animated_sprite:
 		animated_sprite.modulate = Color.RED
 		await get_tree().create_timer(0.1).timeout
 		if not is_dead:
 			animated_sprite.modulate = Color.WHITE
-	
-	# Apply knockback (cancel current actions)
+
+	# Stagger interrupts coalescence (GDD) — check before knockback clears state
+	if is_coalescing and interrupt_type == "stagger":
+		is_coalescing = false
+		coalescence_recovery_timer = 0.5
+		coalescence_spell_lockout = 3.0
+		coalescence_startup_timer = 0.0
+		if debug_hud:
+			debug_hud.log_action("[color=orange]Coalescence interrupted (Stagger)![/color]")
+
+	# Apply knockback and interrupt current actions
 	if knockback_velocity != Vector2.ZERO:
 		velocity = knockback_velocity
 		is_attacking = false
 		is_coalescing = false
 		is_dashing = false
-	
-	# TODO: Handle interrupt_type for flinch/stagger when we add those to player
-	
+
 	# Log damage
 	if debug_hud:
 		debug_hud.log_action("[color=red]Took %.0f damage![/color]" % damage, -damage)
-	
-	# Emit signal
-	emit_signal("took_damage", damage, null, {})
+
+	# Emit signal with actual context
+	emit_signal("took_damage", damage, ctx.get(ContextKeys.SOURCE, null), ctx)
 	if attunements:
-		attunements.notify_took_damage(damage, null, {})
+		attunements.notify_took_damage(damage, ctx.get(ContextKeys.SOURCE, null), ctx)
 	
 	# Check for death
 	if current_health <= 0:
