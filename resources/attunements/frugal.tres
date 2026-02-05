@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Attunement" format=3 uid="uid://ctddg6u7st44w"]
+
+[ext_resource type="Script" uid="uid://bw65k6ku2l2rf" path="res://scripts/attunement.gd" id="1_katyk"]
+
+[resource]
+script = ExtResource("1_katyk")
+attunement_name = "Frugal"
+description = "- Mana Cost / - Mana Regen"
+mana_regen_mult = 0.8
+mana_cost_mult = 0.8
+metadata/_custom_type_script = "uid://bw65k6ku2l2rf"

@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://o351sfl3a6pq"]
+
+[ext_resource type="Script" uid="uid://ckxe05wi5nax5" path="res://scenes/ui/attunement_selector.gd" id="1_ltiru"]
+
+[node name="AttunementSelector" type="Control" unique_id=1982629802]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ltiru")
+
+[node name="BackgroundPanel" type="Panel" parent="." unique_id=1623882895]
+layout_mode = 0
+offset_left = -6.0
+offset_right = 174.0
+offset_bottom = 145.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1697058067]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=426424359]
+layout_mode = 2
+text = "Attunements"
+
+[node name="Slot1Row" type="HBoxContainer" parent="VBoxContainer" unique_id=431719246]
+layout_mode = 2
+
+[node name="Slot1Label" type="Label" parent="VBoxContainer/Slot1Row" unique_id=807436808]
+layout_mode = 2
+text = "Slot 1"
+
+[node name="Slot1Dropdown" type="OptionButton" parent="VBoxContainer/Slot1Row" unique_id=2040534148]
+layout_mode = 2
+
+[node name="Slot2Row" type="HBoxContainer" parent="VBoxContainer" unique_id=938820811]
+layout_mode = 2
+
+[node name="Slot2Label" type="Label" parent="VBoxContainer/Slot2Row" unique_id=350750391]
+layout_mode = 2
+text = "Slot 2"
+
+[node name="Slot2Dropdown" type="OptionButton" parent="VBoxContainer/Slot2Row" unique_id=1974443053]
+layout_mode = 2
+
+[node name="Slot3Row" type="HBoxContainer" parent="VBoxContainer" unique_id=306805578]
+layout_mode = 2
+
+[node name="Slot3Label" type="Label" parent="VBoxContainer/Slot3Row" unique_id=1064530086]
+layout_mode = 2
+text = "Slot 3"
+
+[node name="Slot3Dropdown" type="OptionButton" parent="VBoxContainer/Slot3Row" unique_id=1989289511]
+layout_mode = 2
+
+[node name="SummaryBackgroundPanel" type="Panel" parent="." unique_id=1631796651]
+layout_mode = 0
+offset_left = -6.0
+offset_top = -106.0
+offset_right = 456.0
+offset_bottom = -2.0
+
+[node name="SummaryLabel" type="Label" parent="SummaryBackgroundPanel" unique_id=788689688]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 114.0
+offset_bottom = 102.0
+text = "Summary"

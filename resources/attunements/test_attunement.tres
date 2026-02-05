@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Attunement" format=3 uid="uid://db1f0bd114mlo"]
+
+[ext_resource type="Script" uid="uid://bw65k6ku2l2rf" path="res://scripts/attunement.gd" id="1_k1cev"]
+
+[resource]
+script = ExtResource("1_k1cev")
+attunement_name = "Test"
+description = "N/A"
+metadata/_custom_type_script = "uid://bw65k6ku2l2rf"

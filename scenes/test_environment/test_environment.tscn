@@ -1,0 +1,82 @@
+[gd_scene format=3 uid="uid://datu0po5th3p3"]
+
+[ext_resource type="PackedScene" uid="uid://dcbx80h6k7knp" path="res://characters/player.tscn" id="1_ddmv8"]
+[ext_resource type="PackedScene" uid="uid://s6a2lintyjyi" path="res://scenes/ui/debug_hud.tscn" id="2_al67s"]
+[ext_resource type="PackedScene" uid="uid://ct6vw7jdaxb6i" path="res://characters/training_dummy.tscn" id="3_gul7h"]
+[ext_resource type="PackedScene" uid="uid://gn3trux6bfkf" path="res://scenes/ui/stats_switcher.tscn" id="4_fnpii"]
+[ext_resource type="Script" uid="uid://e8o28f46ys1y" path="res://scenes/ui/stats_switcher.gd" id="5_14n3e"]
+[ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
+size = Vector2(1000, 50)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gul7h"]
+size = Vector2(50, 400)
+
+[node name="TestEnvironment" type="Node2D" unique_id=101179795]
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1331215601]
+
+[node name="Floor" type="StaticBody2D" parent="." unique_id=1444636424]
+position = Vector2(0, 500)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Floor" unique_id=1163520477]
+shape = SubResource("RectangleShape2D_al67s")
+
+[node name="ColorRect" type="ColorRect" parent="Floor" unique_id=58725817]
+offset_left = -500.0
+offset_top = -25.0
+offset_right = 500.0
+offset_bottom = 25.0
+color = Color(0.24705882, 0.20392157, 0.105882354, 1)
+
+[node name="Player" parent="." unique_id=1662624721 groups=["player"] instance=ExtResource("1_ddmv8")]
+position = Vector2(0, 300)
+
+[node name="WallLeft" type="StaticBody2D" parent="." unique_id=369803091]
+position = Vector2(-400, 300)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallLeft" unique_id=1153041286]
+shape = SubResource("RectangleShape2D_gul7h")
+
+[node name="ColorRect" type="ColorRect" parent="WallLeft" unique_id=357541294]
+offset_left = -25.0
+offset_top = -200.0
+offset_right = 25.0
+offset_bottom = 200.0
+
+[node name="WallRight" type="StaticBody2D" parent="." unique_id=1303751446]
+position = Vector2(400, 300)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallRight" unique_id=1714482495]
+shape = SubResource("RectangleShape2D_gul7h")
+
+[node name="ColorRect" type="ColorRect" parent="WallRight" unique_id=765328048]
+offset_left = -25.0
+offset_top = -200.0
+offset_right = 25.0
+offset_bottom = 200.0
+
+[node name="TrainingDummy" parent="." unique_id=975334861 instance=ExtResource("3_gul7h")]
+position = Vector2(230, 409)
+collision_mask = 1
+
+[node name="AttunementSelector" parent="." unique_id=1982629802 instance=ExtResource("6_tskly")]
+offset_left = -852.0
+offset_top = 26.0
+offset_right = -852.0
+offset_bottom = 26.0
+
+[node name="DebugHUD" parent="." unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
+offset_left = -868.0
+offset_top = 174.0
+offset_right = -868.0
+offset_bottom = 174.0
+
+[node name="StatsSwitcher" parent="." unique_id=1730580019 instance=ExtResource("4_fnpii")]
+offset_left = -849.0
+offset_top = 439.0
+offset_right = -849.0
+offset_bottom = 439.0
+script = ExtResource("5_14n3e")
+player_path = NodePath("../Player")

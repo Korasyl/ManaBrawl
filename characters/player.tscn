@@ -1,0 +1,114 @@
+[gd_scene format=3 uid="uid://dcbx80h6k7knp"]
+
+[ext_resource type="Script" uid="uid://b3ts7medgt3i" path="res://characters/player.gd" id="1_dnjla"]
+[ext_resource type="Resource" uid="uid://bxedo12ho0f4l" path="res://resources/character_stats/default_character_stats.tres" id="2_tory2"]
+[ext_resource type="Resource" uid="uid://cfo4tr01pkeup" path="res://resources/movement_data/default_movement_data.tres" id="3_x0jl3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6p3mc"]
+size = Vector2(40, 60)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_tory2"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"coalesce_air",
+"speed": 10.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"coalesce_ground",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"crouch",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"dash",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"fall",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"jump",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"sprint",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"walk",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"wall_cling",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"wall_slide",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tory2"]
+size = Vector2(60, 40)
+
+[node name="Player" type="CharacterBody2D" unique_id=1662624721]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_dnjla")
+stats = ExtResource("2_tory2")
+movement_data = ExtResource("3_x0jl3")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1655466387]
+offset_left = -20.0
+offset_top = -60.0
+offset_right = 20.0
+color = Color(0.25882354, 1, 1, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1751050265]
+position = Vector2(0, -30)
+shape = SubResource("RectangleShape2D_6p3mc")
+
+[node name="WallCheckLeft" type="RayCast2D" parent="." unique_id=1597379337]
+position = Vector2(-20, -30)
+target_position = Vector2(-5, 0)
+
+[node name="WallCheckRight" type="RayCast2D" parent="." unique_id=799728801]
+position = Vector2(20, -30)
+target_position = Vector2(5, 0)
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=232779460]
+sprite_frames = SubResource("SpriteFrames_tory2")
+animation = &"coalesce_air"
+
+[node name="MeleeHitbox" type="Area2D" parent="." unique_id=768863718]
+position = Vector2(30, -30)
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeHitbox" unique_id=578508064]
+shape = SubResource("RectangleShape2D_tory2")
+disabled = true
+
+[node name="ColorRect" type="ColorRect" parent="MeleeHitbox" unique_id=1573839518]
+offset_left = -30.0
+offset_top = -20.0
+offset_right = 30.0
+offset_bottom = 20.0
+color = Color(0.8862745, 0, 0, 0.17254902)

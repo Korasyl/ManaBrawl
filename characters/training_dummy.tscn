@@ -1,0 +1,78 @@
+[gd_scene format=3 uid="uid://ct6vw7jdaxb6i"]
+
+[ext_resource type="Script" uid="uid://daljaislmw6ak" path="res://characters/training_dummy.gd" id="1_d8wxp"]
+[ext_resource type="Resource" uid="uid://buywkjrnf8lf7" path="res://resources/character_stats/training_dummy_stats.tres" id="2_gxcfp"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_5ruqq"]
+size = Vector2(50, 80)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_gxcfp"]
+radius = 53.45
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dnhfb"]
+size = Vector2(70, 50)
+
+[node name="TrainingDummy" type="CharacterBody2D" unique_id=975334861]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_d8wxp")
+stats = ExtResource("2_gxcfp")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=516828270]
+offset_left = -25.0
+offset_top = -80.0
+offset_right = 25.0
+color = Color(0.9920382, 0.66114575, 0.32156673, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1177531624]
+position = Vector2(0, -40)
+shape = SubResource("RectangleShape2D_5ruqq")
+one_way_collision = true
+
+[node name="HealthBar" type="ProgressBar" parent="." unique_id=631805633]
+offset_left = -30.0
+offset_top = -96.0
+offset_right = 30.0
+offset_bottom = -88.0
+max_value = 200.0
+value = 200.0
+show_percentage = false
+
+[node name="HealthLabel" type="Label" parent="." unique_id=1147562505]
+offset_left = -30.0
+offset_top = -115.0
+offset_right = 10.0
+offset_bottom = -92.0
+text = "200/200"
+
+[node name="WallCheckRight" type="RayCast2D" parent="." unique_id=197263429]
+position = Vector2(25, -40)
+target_position = Vector2(15, 0)
+
+[node name="WallCheckLeft" type="RayCast2D" parent="." unique_id=664122944]
+position = Vector2(-25, -40)
+target_position = Vector2(-15, 0)
+
+[node name="DetectionArea" type="Area2D" parent="." unique_id=264290755]
+position = Vector2(0, -40)
+collision_layer = 0
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea" unique_id=2020841446]
+shape = SubResource("CircleShape2D_gxcfp")
+
+[node name="AttackHitbox" type="Area2D" parent="." unique_id=256841778]
+position = Vector2(50, -40)
+collision_layer = 0
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox" unique_id=1862715336]
+shape = SubResource("RectangleShape2D_dnhfb")
+disabled = true
+
+[node name="ColorRect" type="ColorRect" parent="AttackHitbox" unique_id=615648029]
+offset_left = -35.0
+offset_top = -25.0
+offset_right = 35.0
+offset_bottom = 25.0
+color = Color(1, 0, 0, 0.34117648)

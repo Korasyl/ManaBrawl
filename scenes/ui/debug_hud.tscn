@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://s6a2lintyjyi"]
+
+[ext_resource type="Script" uid="uid://bqw3eqicoduni" path="res://scenes/ui/debug_hud.gd" id="1_b7bo0"]
+
+[node name="DebugHUD" type="Control" unique_id=107808323]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_b7bo0")
+
+[node name="BackgroundPanel" type="Panel" parent="." unique_id=1231613858]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 310.0
+offset_bottom = 319.0
+
+[node name="ManaLabel" type="Label" parent="." unique_id=1355113731]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 60.0
+offset_bottom = 43.0
+text = "Mana: 100/100"
+
+[node name="ManaBar" type="ProgressBar" parent="." unique_id=610960935]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 45.0
+offset_right = 280.0
+offset_bottom = 72.0
+value = 100.0
+
+[node name="HealthLabel" type="Label" parent="." unique_id=1106637560]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 75.0
+offset_right = 60.0
+offset_bottom = 98.0
+text = "Health: 100/100"
+
+[node name="HealthBar" type="ProgressBar" parent="." unique_id=2074081524]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 100.0
+offset_right = 280.0
+offset_bottom = 127.0
+value = 100.0
+
+[node name="StateLabel" type="Label" parent="." unique_id=1171709578]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 130.0
+offset_right = 98.0
+offset_bottom = 153.0
+text = "State: Idle"
+
+[node name="ActionLog" type="RichTextLabel" parent="." unique_id=481831767]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 199.0
+offset_right = 280.0
+offset_bottom = 251.0
+bbcode_enabled = true
+
+[node name="AnimationLabel" type="Label" parent="." unique_id=1615065883]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 153.0
+offset_right = 137.0
+offset_bottom = 176.0
+text = "Animation: Idle"
+
+[node name="ComboLabel" type="Label" parent="." unique_id=1588845991]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 175.0
+offset_right = 93.0
+offset_bottom = 198.0
+text = "Combo: 0"

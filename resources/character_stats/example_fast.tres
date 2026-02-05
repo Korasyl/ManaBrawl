@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterStats" format=3 uid="uid://b6mytfehkured"]
+
+[ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_31xdk"]
+
+[resource]
+script = ExtResource("1_31xdk")
+character_name = "Test_Fast"
+walk_speed = 300.0
+sprint_speed = 550.0
+crouch_speed = 200.0
+jump_velocity = -450.0
+double_jump_cost = 8.0
+dash_cost = 25.0
+wall_jump_cost = 8.0
+wall_cling_drain = 6.0
+melee_hit_mana_gain = 5.0
+light_attack_damage = 5.0
+heavy_attack_damage = 18.0
+knockback_force = 400.0
+metadata/_custom_type_script = "uid://s4jsexs1g15d"

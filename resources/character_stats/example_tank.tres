@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharacterStats" format=3 uid="uid://dje6ri6rn4qcg"]
+
+[ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_vffww"]
+
+[resource]
+script = ExtResource("1_vffww")
+character_name = "Test_Tank"
+knockback_force = 1500.0
+metadata/_custom_type_script = "uid://s4jsexs1g15d"
