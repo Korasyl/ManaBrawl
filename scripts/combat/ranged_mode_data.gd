@@ -24,6 +24,12 @@ class_name RangedModeData
 @export var targeted_affect_allies: bool = true
 @export var targeted_affect_enemies: bool = true
 
+## Targeted delivery method: how effects reach the target
+## "apply_at_target" = instant application, "projectile" = homing projectile delivers effects on hit
+@export_enum("apply_at_target", "projectile") var targeted_delivery: String = "apply_at_target"
+## Homing turn speed for projectile delivery (radians/sec)
+@export var targeted_homing_turn_speed: float = 8.0
+
 ## Cauterizing Fire-style effects
 @export var targeted_burst_damage: float = 0.0
 @export var targeted_burst_heal: float = 0.0
