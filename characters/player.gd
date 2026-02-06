@@ -97,6 +97,10 @@ var queued_spell_index: int = -1  # Which spell is being aimed (-1 = none)
 var queued_spell_mana_paid: float = 0.0
 const QUEUE_REGEN_LOCK_DURATION: float = 0.75
 var queue_regen_lock_timer: float = 0.0
+var is_channeling_spell: bool = false
+var channel_spell_index: int = -1
+var channel_fire_timer: float = 0.0
+var suppress_light_attack_release_once: bool = false
 var active_toggles: Array[bool] = [false, false, false, false]
 
 ## Placement mode state (for "placement" cast type spells)
@@ -119,10 +123,10 @@ func _ready():
 	# Load default test spells if none assigned
 	if spell_slots.is_empty():
 		spell_slots = [
-			preload("res://resources/spells/arcane_bolt.tres"),
+			preload("res://resources/spells/ice_spike_burst.tres"),
 			preload("res://resources/spells/aegis_barrier.tres"),
 			preload("res://resources/spells/haste.tres"),
-			preload("res://resources/spells/mana_blast.tres"),
+			preload("res://resources/spells/sacred_flame.tres"),
 		]
 
 	# Check raycasts
@@ -282,6 +286,7 @@ func _physics_process(delta):
 
 	handle_ranged_mode()
 	handle_spell_input()
+	handle_channeled_spell(delta)
 	handle_placement_mode()
 	handle_attack_input()
 
@@ -453,6 +458,8 @@ func update_hud():
 		state = "ROOTED"
 	elif is_dashing:
 		state = "DASHING"
+	elif is_channeling_spell and channel_spell_index >= 0 and channel_spell_index < spell_slots.size() and spell_slots[channel_spell_index] != null:
+		state = "Channeling: %s" % spell_slots[channel_spell_index].spell_name
 	elif is_placing and queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
 		var pstate := "rotating" if placement_locked else "positioning"
 		state = "Placing: %s (%s)" % [spell_slots[queued_spell_index].spell_name, pstate]
@@ -695,6 +702,10 @@ func handle_attack_timers(delta):
 			is_charging_heavy = false
 
 func handle_attack_input():
+	if suppress_light_attack_release_once:
+		suppress_light_attack_release_once = false
+		return
+
 	# Can't melee while in ranged mode, spell queue, coalescing, dashing, recovery, blocking, or on cooldown
 	if is_in_ranged_mode or queued_spell_index >= 0:
 		return
@@ -953,6 +964,10 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	queued_spell_index = -1
 	queued_spell_mana_paid = 0.0
 	queue_regen_lock_timer = 0.0
+	is_channeling_spell = false
+	channel_spell_index = -1
+	channel_fire_timer = 0.0
+	suppress_light_attack_release_once = false
 	is_placing = false
 	placement_locked = false
 
@@ -1143,6 +1158,10 @@ func die():
 	queued_spell_index = -1
 	queued_spell_mana_paid = 0.0
 	queue_regen_lock_timer = 0.0
+	is_channeling_spell = false
+	channel_spell_index = -1
+	channel_fire_timer = 0.0
+	suppress_light_attack_release_once = false
 	active_toggles = [false, false, false, false]
 	is_placing = false
 	placement_locked = false
@@ -1178,6 +1197,10 @@ func respawn():
 	queued_spell_index = -1
 	queued_spell_mana_paid = 0.0
 	queue_regen_lock_timer = 0.0
+	is_channeling_spell = false
+	channel_spell_index = -1
+	channel_fire_timer = 0.0
+	suppress_light_attack_release_once = false
 	spell_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	active_toggles = [false, false, false, false]
 	is_placing = false
@@ -1262,9 +1285,14 @@ func handle_spell_input():
 		if Input.is_action_just_pressed(action_name):
 			_on_spell_key_pressed(i)
 
-	# If a spell is queued and LMB pressed, cast it
-	if queued_spell_index >= 0 and Input.is_action_just_pressed("light_attack"):
-		cast_spell(queued_spell_index)
+	# If a spell is queued and LMB pressed, cast it (unless channeled)
+	if queued_spell_index >= 0 and queued_spell_index < spell_slots.size() and spell_slots[queued_spell_index] != null:
+		var queued_spell: SpellData = spell_slots[queued_spell_index]
+		if queued_spell.is_channeled:
+			if Input.is_action_just_pressed("light_attack"):
+				_start_channeled_spell(queued_spell_index)
+		elif Input.is_action_just_pressed("light_attack"):
+			cast_spell(queued_spell_index)
 
 func _on_spell_key_pressed(index: int):
 	if index >= spell_slots.size() or spell_slots[index] == null:
@@ -1292,16 +1320,18 @@ func _on_spell_key_pressed(index: int):
 	if queued_spell_index >= 0:
 		_clear_spell_queue(true, true)
 
-	# Pay mana immediately on queue, so cast cannot fail from mana later.
-	var spent := use_mana(spell.mana_cost, "spell_cast")
-	if spent <= 0.0:
-		if debug_hud:
-			debug_hud.log_action("[color=red]Not enough mana[/color]")
-		return
+	var spent: float = 0.0
+	if not spell.is_channeled:
+		# Non-channeled spells pay on queue so cast cannot fail from mana later.
+		spent = use_mana(spell.mana_cost, "spell_cast")
+		if spent <= 0.0:
+			if debug_hud:
+				debug_hud.log_action("[color=red]Not enough mana[/color]")
+			return
 
 	queued_spell_index = index
 	queued_spell_mana_paid = spent
-	queue_regen_lock_timer = QUEUE_REGEN_LOCK_DURATION
+	queue_regen_lock_timer = QUEUE_REGEN_LOCK_DURATION if spent > 0.0 else 0.0
 
 	# Enter placement mode for placement spells
 	if spell.cast_type == "placement":
@@ -1309,21 +1339,91 @@ func _on_spell_key_pressed(index: int):
 		placement_locked = false
 		placement_position = get_global_mouse_position()
 		if debug_hud:
-			debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name, -spent)
+			if spent > 0.0:
+				debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name, -spent)
+			else:
+				debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name)
 	else:
 		if debug_hud:
-			debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name, -spent)
+			if spent > 0.0:
+				debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name, -spent)
+			else:
+				debug_hud.log_action("[color=violet]Queued: %s (Hold LMB to channel)[/color]" % spell.spell_name)
 
 func _clear_spell_queue(refund_mana: bool = false, reset_placement: bool = true) -> void:
 	if refund_mana and queued_spell_mana_paid > 0.0 and stats:
 		current_mana = min(current_mana + queued_spell_mana_paid, stats.max_mana)
 	queued_spell_mana_paid = 0.0
 	queued_spell_index = -1
+	is_channeling_spell = false
+	channel_spell_index = -1
+	channel_fire_timer = 0.0
 	if refund_mana:
 		queue_regen_lock_timer = 0.0
 	if reset_placement:
 		is_placing = false
 		placement_locked = false
+
+func _start_channeled_spell(index: int) -> void:
+	if index < 0 or index >= spell_slots.size() or spell_slots[index] == null:
+		return
+	var spell: SpellData = spell_slots[index]
+	if not spell.is_channeled:
+		return
+
+	is_channeling_spell = true
+	channel_spell_index = index
+	channel_fire_timer = 0.0
+	spell_cooldowns[index] = spell.cooldown
+	if debug_hud:
+		debug_hud.log_action("[color=violet]Channeling: %s[/color]" % spell.spell_name)
+
+func handle_channeled_spell(delta: float) -> void:
+	if not is_channeling_spell:
+		return
+
+	if channel_spell_index < 0 or channel_spell_index >= spell_slots.size() or spell_slots[channel_spell_index] == null:
+		_clear_spell_queue(false, true)
+		return
+
+	var spell: SpellData = spell_slots[channel_spell_index]
+	if not spell.is_channeled:
+		_clear_spell_queue(false, true)
+		return
+
+	if is_staggered:
+		if debug_hud:
+			debug_hud.log_action("[color=red]Channel interrupted[/color]")
+		suppress_light_attack_release_once = true
+		_clear_spell_queue(false, true)
+		return
+
+	if not Input.is_action_pressed("light_attack"):
+		suppress_light_attack_release_once = true
+		_clear_spell_queue(false, true)
+		return
+
+	var spent: float = use_mana(spell.channel_mana_drain_per_second * delta, "spell_channel")
+	if spent <= 0.0:
+		if debug_hud:
+			debug_hud.log_action("[color=red]Channel ended (no mana)[/color]")
+		suppress_light_attack_release_once = true
+		_clear_spell_queue(false, true)
+		return
+
+	var fire_interval: float = maxf(0.03, spell.channel_fire_interval)
+	channel_fire_timer += delta
+	while channel_fire_timer >= fire_interval:
+		channel_fire_timer -= fire_interval
+		var shots: int = maxi(1, spell.channel_projectiles_per_tick)
+		for i in range(shots):
+			_fire_channeled_tick(spell)
+
+func _fire_channeled_tick(spell: SpellData) -> void:
+	var target: Node = _find_target_near_cursor()
+	if target == null:
+		return
+	_fire_targeted_projectile(spell, target)
 
 func _toggle_spell(index: int):
 	var spell := spell_slots[index]
@@ -1353,8 +1453,8 @@ func cast_spell(index: int):
 
 	var spell := spell_slots[index]
 
-	# Placement spells are handled by handle_placement_mode(), not here
-	if spell.cast_type == "placement":
+	# Placement and channeled spells are handled elsewhere.
+	if spell.cast_type == "placement" or spell.is_channeled:
 		return
 
 	# For targeted spells, require a valid target before resolving cast
@@ -1403,7 +1503,23 @@ func _fire_spell_projectile(spell: SpellData):
 
 func _fire_targeted_projectile(spell: SpellData, target: Node):
 	var dir: Vector2 = (target.global_position - global_position).normalized()
-
+	
+	# Targeted application spells spawn directly at validated target.
+	if spell.targeted_delivery == "apply_at_target":
+		if spell.spell_scene:
+			_spawn_spell_scene(spell, target.global_position, dir, target)
+		elif target.has_method("take_damage"):
+			var ctx := {
+				ContextKeys.SOURCE: self,
+				ContextKeys.TARGET: target,
+				ContextKeys.ATTACK_ID: spell.spell_name,
+				ContextKeys.DAMAGE_TYPE: "spell",
+				ContextKeys.TEAM_ID: team_id,
+				ContextKeys.SPELL_DATA: spell,
+			}
+			target.take_damage(spell.damage, Vector2.ZERO, spell.interrupt_type, ctx)
+		return
+		
 	if spell.spell_scene:
 		_spawn_spell_scene(spell, global_position + dir * 40, dir, target)
 		return
@@ -1418,6 +1534,9 @@ func _fire_targeted_projectile(spell: SpellData, target: Node):
 	proj.source = self
 	proj.team_id = team_id
 	proj.spell_data = spell
+	if proj is Projectile:
+		proj.homing_target = target if target is Node2D else null
+		proj.homing_turn_speed = spell.targeted_homing_turn_speed
 	get_tree().current_scene.add_child(proj)
 	if proj.has_node("ColorRect"):
 		proj.get_node("ColorRect").color = spell.projectile_color

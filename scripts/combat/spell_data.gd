@@ -18,6 +18,17 @@ class_name SpellData
 @export var projectile_speed: float = 500.0
 @export var projectile_color: Color = Color(0.5, 0.3, 1.0)
 
+## Targeted spell behavior
+@export_enum("projectile", "apply_at_target") var targeted_delivery: String = "projectile"
+@export var targeted_homing_turn_speed: float = 8.0  # radians per second
+
+## Channeled casting
+@export var is_channeled: bool = false
+@export var channel_mana_drain_per_second: float = 16.0
+@export var channel_fire_interval: float = 0.16
+@export var channel_projectiles_per_tick: int = 1
+
+
 ## Cast modifiers (GDD spell variables)
 @export var prevent_move: bool = false
 @export var slow_move: float = 1.0  # 1.0 = normal, 0.5 = half speed while active

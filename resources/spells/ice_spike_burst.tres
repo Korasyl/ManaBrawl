@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/ice_spike_burst.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Ice Spike Burst"
+mana_cost = 24.0
+cooldown = 7.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 22.0
+interrupt_type = "stagger"
+projectile_speed = 0.0
+projectile_color = Color(0.65, 0.9, 1, 1)
+targeted_delivery = "apply_at_target"
+slow_move = 1.0
+toggle_mana_drain = 0.0

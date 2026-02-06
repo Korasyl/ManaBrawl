@@ -1,16 +1,14 @@
-[gd_resource type="Resource" script_class="SpellData" format=3]
+[gd_resource type="Resource" script_class="SpellData" format=3 uid="uid://cd4erug2a11so"]
 
-[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="Script" uid="uid://b6vugw0yoomsi" path="res://scripts/combat/spell_data.gd" id="1_spell"]
 
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Focus Strike"
-mana_cost = 20.0
 cooldown = 4.0
 cast_type = "targeted"
 damage = 25.0
-interrupt_type = "flinch"
 projectile_speed = 600.0
-projectile_color = Color(1.0, 0.3, 0.3, 1)
-slow_move = 1.0
+projectile_color = Color(1, 0.3, 0.3, 1)
+targeted_homing_turn_speed = 10.0
 toggle_mana_drain = 0.0

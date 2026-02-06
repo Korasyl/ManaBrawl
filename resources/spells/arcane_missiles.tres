@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Arcane Missiles"
+mana_cost = 0.0
+cooldown = 2.5
+cast_type = "targeted"
+damage = 6.0
+interrupt_type = "flinch"
+projectile_speed = 520.0
+projectile_color = Color(0.75, 0.55, 1, 1)
+targeted_delivery = "projectile"
+targeted_homing_turn_speed = 14.0
+is_channeled = true
+channel_mana_drain_per_second = 18.0
+channel_fire_interval = 0.14
+channel_projectiles_per_tick = 1
+slow_move = 1.0
+toggle_mana_drain = 0.0

@@ -17,6 +17,11 @@ var on_impact_scene: PackedScene = null
 ## Spell data reference (null for basic ranged)
 var spell_data: SpellData = null
 
+## Optional homing
+var homing_target: Node2D = null
+var homing_turn_speed: float = 0.0  # radians per second
+
+
 @onready var collision: CollisionShape2D = $CollisionShape2D
 @onready var visual: ColorRect = $ColorRect
 
@@ -28,6 +33,14 @@ func _ready():
 	rotation = direction.angle()
 
 func _physics_process(delta):
+	if homing_target != null and is_instance_valid(homing_target) and homing_turn_speed > 0.0:
+		var to_target: Vector2 = (homing_target.global_position - global_position)
+		if to_target.length_squared() > 0.0001:
+			var desired_dir: Vector2 = to_target.normalized()
+			var max_turn: float = homing_turn_speed * delta
+			direction = direction.slerp(desired_dir, clampf(max_turn, 0.0, 1.0)).normalized()
+			rotation = direction.angle()
+
 	position += direction * speed * delta
 	_lifetime_timer += delta
 	if _lifetime_timer >= lifetime:
