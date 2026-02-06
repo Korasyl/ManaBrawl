@@ -94,6 +94,9 @@ var _default_ranged_mode: RangedModeData = preload("res://resources/ranged_modes
 @export var spell_slots: Array[SpellData] = []
 var spell_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var queued_spell_index: int = -1  # Which spell is being aimed (-1 = none)
+var queued_spell_mana_paid: float = 0.0
+const QUEUE_REGEN_LOCK_DURATION: float = 0.75
+var queue_regen_lock_timer: float = 0.0
 var active_toggles: Array[bool] = [false, false, false, false]
 
 ## Placement mode state (for "placement" cast type spells)
@@ -117,7 +120,7 @@ func _ready():
 	if spell_slots.is_empty():
 		spell_slots = [
 			preload("res://resources/spells/arcane_bolt.tres"),
-			preload("res://resources/spells/focus_strike.tres"),
+			preload("res://resources/spells/aegis_barrier.tres"),
 			preload("res://resources/spells/haste.tres"),
 			preload("res://resources/spells/mana_blast.tres"),
 		]
@@ -203,6 +206,10 @@ func _physics_process(delta):
 
 	if ranged_cooldown_timer > 0:
 		ranged_cooldown_timer -= delta
+
+	if queue_regen_lock_timer > 0:
+		queue_regen_lock_timer -= delta
+
 
 	# Spell cooldowns
 	for i in 4:
@@ -380,6 +387,10 @@ func update_facing_direction():
 
 func regenerate_mana(delta):
 	if stats and current_mana < stats.max_mana:
+		# Brief regen lockout right after queueing a spell.
+		if queue_regen_lock_timer > 0:
+			return
+
 		var regen_rate = stats.passive_mana_regen
 
 		# Enhanced regen if coalescing and past startup
@@ -651,8 +662,8 @@ func update_animation():
 		anim = "idle"
 	
 	# Play the animation if it's different from current
-	if animated_sprite.animation != anim:
-		animated_sprite.play(anim)
+	##if animated_sprite.animation != anim:
+	##	animated_sprite.play(anim)
 	
 	# Update debug HUD with current animation
 	if debug_hud:
@@ -940,6 +951,8 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	is_in_ranged_mode = false
 	ranged_cooldown_timer = 0.0
 	queued_spell_index = -1
+	queued_spell_mana_paid = 0.0
+	queue_regen_lock_timer = 0.0
 	is_placing = false
 	placement_locked = false
 
@@ -1128,6 +1141,8 @@ func die():
 	is_charging_heavy = false
 	is_in_ranged_mode = false
 	queued_spell_index = -1
+	queued_spell_mana_paid = 0.0
+	queue_regen_lock_timer = 0.0
 	active_toggles = [false, false, false, false]
 	is_placing = false
 	placement_locked = false
@@ -1161,6 +1176,8 @@ func respawn():
 	is_in_ranged_mode = false
 	ranged_cooldown_timer = 0.0
 	queued_spell_index = -1
+	queued_spell_mana_paid = 0.0
+	queue_regen_lock_timer = 0.0
 	spell_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	active_toggles = [false, false, false, false]
 	is_placing = false
@@ -1257,36 +1274,56 @@ func _on_spell_key_pressed(index: int):
 
 	if spell.cast_type == "toggled":
 		_toggle_spell(index)
+		return
+
+	# Targeted, free_aim, or placement: queue/cancel
+	if queued_spell_index == index:
+		_clear_spell_queue(true, true)
+		if debug_hud:
+			debug_hud.log_action("[color=gray]Spell cancelled[/color]")
+		return
+
+	if spell_cooldowns[index] > 0:
+		if debug_hud:
+			debug_hud.log_action("[color=red]On cooldown (%.1fs)[/color]" % spell_cooldowns[index])
+		return
+
+	# If another spell was queued, replace it and refund previous queue payment.
+	if queued_spell_index >= 0:
+		_clear_spell_queue(true, true)
+
+	# Pay mana immediately on queue, so cast cannot fail from mana later.
+	var spent := use_mana(spell.mana_cost, "spell_cast")
+	if spent <= 0.0:
+		if debug_hud:
+			debug_hud.log_action("[color=red]Not enough mana[/color]")
+		return
+
+	queued_spell_index = index
+	queued_spell_mana_paid = spent
+	queue_regen_lock_timer = QUEUE_REGEN_LOCK_DURATION
+
+	# Enter placement mode for placement spells
+	if spell.cast_type == "placement":
+		is_placing = true
+		placement_locked = false
+		placement_position = get_global_mouse_position()
+		if debug_hud:
+			debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name, -spent)
 	else:
-		# Targeted, free_aim, or placement: queue/cancel
-		if queued_spell_index == index:
-			# Cancel queue (also cancels placement mode)
-			if is_placing:
-				_cancel_placement()
-			else:
-				queued_spell_index = -1
-				if debug_hud:
-					debug_hud.log_action("[color=gray]Spell cancelled[/color]")
-		else:
-			if spell_cooldowns[index] > 0:
-				if debug_hud:
-					debug_hud.log_action("[color=red]On cooldown (%.1fs)[/color]" % spell_cooldowns[index])
-				return
-			if current_mana < spell.mana_cost:
-				if debug_hud:
-					debug_hud.log_action("[color=red]Not enough mana[/color]")
-				return
-			queued_spell_index = index
-			# Enter placement mode for placement spells
-			if spell.cast_type == "placement":
-				is_placing = true
-				placement_locked = false
-				placement_position = get_global_mouse_position()
-				if debug_hud:
-					debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name)
-			else:
-				if debug_hud:
-					debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name)
+		if debug_hud:
+			debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name, -spent)
+
+func _clear_spell_queue(refund_mana: bool = false, reset_placement: bool = true) -> void:
+	if refund_mana and queued_spell_mana_paid > 0.0 and stats:
+		current_mana = min(current_mana + queued_spell_mana_paid, stats.max_mana)
+	queued_spell_mana_paid = 0.0
+	queued_spell_index = -1
+	if refund_mana:
+		queue_regen_lock_timer = 0.0
+	if reset_placement:
+		is_placing = false
+		placement_locked = false
 
 func _toggle_spell(index: int):
 	var spell := spell_slots[index]
@@ -1311,7 +1348,7 @@ func _toggle_spell(index: int):
 
 func cast_spell(index: int):
 	if index >= spell_slots.size() or spell_slots[index] == null:
-		queued_spell_index = -1
+		_clear_spell_queue(true, true)
 		return
 
 	var spell := spell_slots[index]
@@ -1320,7 +1357,7 @@ func cast_spell(index: int):
 	if spell.cast_type == "placement":
 		return
 
-	# For targeted spells, find target first (don't consume mana if no target)
+	# For targeted spells, require a valid target before resolving cast
 	var target_body: Node = null
 	if spell.cast_type == "targeted":
 		target_body = _find_target_near_cursor()
@@ -1329,13 +1366,8 @@ func cast_spell(index: int):
 				debug_hud.log_action("[color=red]No target found[/color]")
 			return
 
-	var spent := use_mana(spell.mana_cost, "spell_cast")
-	if spent <= 0:
-		queued_spell_index = -1
-		return
-
 	spell_cooldowns[index] = spell.cooldown
-	queued_spell_index = -1
+	_clear_spell_queue(false, true)
 
 	match spell.cast_type:
 		"free_aim":
@@ -1344,7 +1376,7 @@ func cast_spell(index: int):
 			_fire_targeted_projectile(spell, target_body)
 
 	if debug_hud:
-		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name, -spent)
+		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name)
 
 func _fire_spell_projectile(spell: SpellData):
 	var dir := (get_global_mouse_position() - global_position).normalized()
@@ -1451,12 +1483,12 @@ func handle_placement_mode():
 		return
 
 	if queued_spell_index < 0 or queued_spell_index >= spell_slots.size():
-		is_placing = false
+		_clear_spell_queue(true, true)
 		return
 
 	var spell := spell_slots[queued_spell_index]
 	if spell == null or spell.cast_type != "placement":
-		is_placing = false
+		_clear_spell_queue(true, true)
 		return
 
 	if not placement_locked:
@@ -1473,15 +1505,7 @@ func handle_placement_mode():
 		placement_rotation = delta_to_mouse.angle()
 
 		if Input.is_action_just_released("light_attack"):
-			# Confirm placement — spend mana and spawn
-			var spent := use_mana(spell.mana_cost, "spell_cast")
-			if spent <= 0:
-				# Not enough mana — cancel
-				is_placing = false
-				placement_locked = false
-				queued_spell_index = -1
-				return
-
+			# Confirm placement — mana was already paid on queue
 			spell_cooldowns[queued_spell_index] = spell.cooldown
 
 			# Spawn the spell entity at the placement location
@@ -1506,12 +1530,10 @@ func handle_placement_mode():
 				get_tree().current_scene.add_child(entity)
 
 			if debug_hud:
-				debug_hud.log_action("[color=violet]Placed: %s[/color]" % spell.spell_name, -spent)
+				debug_hud.log_action("[color=violet]Placed: %s[/color]" % spell.spell_name)
 
 			# Clean up placement state
-			is_placing = false
-			placement_locked = false
-			queued_spell_index = -1
+			_clear_spell_queue(false, true)
 
 	# Cancel with Q or pressing the same spell key
 	if Input.is_action_just_pressed("cancel_cast"):
@@ -1520,9 +1542,7 @@ func handle_placement_mode():
 	queue_redraw()
 
 func _cancel_placement():
-	is_placing = false
-	placement_locked = false
-	queued_spell_index = -1
+	_clear_spell_queue(true, true)
 	if debug_hud:
 		debug_hud.log_action("[color=gray]Placement cancelled[/color]")
 
@@ -1546,15 +1566,39 @@ func _load_passive():
 func _draw():
 	# Placement mode preview
 	if is_placing:
-		var local_pos := placement_position - global_position
+		var local_pos: Vector2 = placement_position - global_position
+		var preview_size: Vector2 = Vector2(220.0, 18.0)
+		var preview_fill: Color = Color(0.35, 0.75, 1.0, 0.30)
+		var preview_outline: Color = Color(0.35, 0.75, 1.0, 0.85)
+
+		if queued_spell_index >= 0 and queued_spell_index < spell_slots.size() and spell_slots[queued_spell_index] != null:
+			var preview_spell: SpellData = spell_slots[queued_spell_index]
+			preview_size = preview_spell.placement_preview_size
+			preview_fill = preview_spell.placement_preview_color
+			preview_outline = preview_spell.placement_preview_outline_color
+
 		if not placement_locked:
-			# Show crosshair at cursor
+			# Positioning step: crosshair only (no ghost footprint until rotate step)
 			draw_circle(local_pos, 8.0, Color(0.3, 1.0, 0.6, 0.6))
 			draw_arc(local_pos, 12.0, 0, TAU, 16, Color(0.3, 1.0, 0.6, 0.3), 2.0)
 		else:
-			# Show locked position + rotation indicator
+			# Show locked position + rotation indicator + rotated ghost barrier
+			var half_size: Vector2 = preview_size * 0.5
+			var corners: PackedVector2Array = PackedVector2Array([
+				Vector2(-half_size.x, -half_size.y),
+				Vector2( half_size.x, -half_size.y),
+				Vector2( half_size.x,  half_size.y),
+				Vector2(-half_size.x,  half_size.y),
+			])
+			var points: PackedVector2Array = PackedVector2Array()
+			for i in range(corners.size()):
+				var c: Vector2 = corners[i]
+				points.append(local_pos + c.rotated(placement_rotation))
+			draw_colored_polygon(points, preview_fill)
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), preview_outline, 2.0)
+
 			draw_circle(local_pos, 6.0, Color(1.0, 0.8, 0.2, 0.8))
-			var rot_end := local_pos + Vector2.from_angle(placement_rotation) * 40
+			var rot_end: Vector2 = local_pos + Vector2.from_angle(placement_rotation) * maxf(40.0, preview_size.x * 0.35)
 			draw_line(local_pos, rot_end, Color(1.0, 0.8, 0.2, 0.8), 2.0)
 		return
 

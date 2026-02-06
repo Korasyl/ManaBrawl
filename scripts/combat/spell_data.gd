@@ -24,3 +24,8 @@ class_name SpellData
 
 ## Toggle properties
 @export var toggle_mana_drain: float = 5.0  # Mana per second while toggled on
+
+## Placement preview tuning (used by Player._draw placement ghost)
+@export var placement_preview_size: Vector2 = Vector2(220.0, 18.0)
+@export var placement_preview_color: Color = Color(0.35, 0.75, 1.0, 0.30)
+@export var placement_preview_outline_color: Color = Color(0.35, 0.75, 1.0, 0.85)

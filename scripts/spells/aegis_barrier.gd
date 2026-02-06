@@ -34,7 +34,7 @@ func _spell_process(_delta: float) -> void:
 	if visual == null:
 		return
 
-	var hp_ratio := clamp(current_hp / max_hp, 0.0, 1.0)
+	var hp_ratio: float = clampf(current_hp / max_hp, 0.0, 1.0)
 	visual.color = damaged_color.lerp(barrier_color, hp_ratio)
 
 func _on_expire() -> void:
