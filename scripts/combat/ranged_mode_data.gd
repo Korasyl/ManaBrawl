@@ -1,0 +1,18 @@
+extends Resource
+class_name RangedModeData
+
+## Identity
+@export var mode_name: String = "Basic Ranged"
+@export_enum("free_aim", "targeted", "deflect", "none") var mode_type: String = "free_aim"
+
+## Projectile properties
+@export var damage: float = 8.0
+@export var damage_type: String = "ranged"  # Flows into ContextKeys.DAMAGE_TYPE for attunement hooks
+@export var interrupt_type: String = "flinch"
+@export var projectile_speed: float = 600.0
+@export var projectile_color: Color = Color(1, 0.9, 0.3, 1)
+@export var projectile_scene: PackedScene  # null = use default projectile
+
+## Mode behavior
+@export var fire_cooldown: float = 0.4
+@export var move_speed_mult: float = 0.7  # Movement speed while in ranged mode

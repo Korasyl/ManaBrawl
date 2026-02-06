@@ -117,6 +117,17 @@ func modify_mana_gain(value_key: String, base_value: float, ctx: Dictionary = {}
 
 	return result
 
+## Returns the first non-null ranged mode override from equipped attunements.
+## Falls back to null (caller should then use stats.ranged_mode).
+func get_ranged_mode_override() -> RangedModeData:
+	for a in _slots:
+		if a == null:
+			continue
+		var override := a.get_ranged_mode_override()
+		if override != null:
+			return override
+	return null
+
 func get_multiplier_summary() -> Dictionary:
 	return {
 		"regen_mult": get_regen_mult(),

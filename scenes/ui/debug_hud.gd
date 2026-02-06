@@ -9,6 +9,7 @@ extends Control
 @onready var action_log = $ActionLog
 @onready var animation_label = $AnimationLabel
 @onready var combo_label = $ComboLabel
+@onready var spell_label = $SpellLabel
 
 ## Action log history
 var log_lines: Array[String] = []
@@ -69,3 +70,26 @@ func update_combo(count: int, window_active: bool):
 			combo_label.text = "Combo: %d" % count
 		else:
 			combo_label.text = "Combo: 0"
+
+func update_spells(slots: Array, cooldowns: Array, toggles: Array, queued: int):
+	if not spell_label:
+		return
+	var lines: Array[String] = []
+	for i in slots.size():
+		if i >= 4:
+			break
+		var spell = slots[i]
+		if spell == null:
+			lines.append("[%d] --" % (i + 1))
+			continue
+		var status := ""
+		if queued == i:
+			status = "[color=violet]QUEUED[/color]"
+		elif i < toggles.size() and toggles[i]:
+			status = "[color=lime]ON[/color]"
+		elif i < cooldowns.size() and cooldowns[i] > 0:
+			status = "[color=red]CD %.1fs[/color]" % cooldowns[i]
+		else:
+			status = "[color=gray]Ready[/color]"
+		lines.append("[%d] %s: %s" % [i + 1, spell.spell_name, status])
+	spell_label.text = "\n".join(lines)

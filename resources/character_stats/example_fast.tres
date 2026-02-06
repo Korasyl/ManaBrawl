@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="CharacterStats" format=3 uid="uid://b6mytfehkured"]
 
 [ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_31xdk"]
+[ext_resource type="Resource" path="res://resources/ranged_modes/default_free_aim.tres" id="2_rnged"]
 
 [resource]
 script = ExtResource("1_31xdk")
@@ -17,4 +18,5 @@ melee_hit_mana_gain = 5.0
 light_attack_damage = 5.0
 heavy_attack_damage = 18.0
 knockback_force = 400.0
+ranged_mode = ExtResource("2_rnged")
 metadata/_custom_type_script = "uid://s4jsexs1g15d"

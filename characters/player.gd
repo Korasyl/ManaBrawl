@@ -78,6 +78,19 @@ var landed_flinch_this_attack: bool = false
 var melee_cooldown_timer: float = 0.0  # Prevents attack spam after combo
 const MELEE_COOLDOWN_DURATION: float = 0.4
 
+## Ranged state
+var is_in_ranged_mode: bool = false
+var ranged_cooldown_timer: float = 0.0
+var aim_direction: Vector2 = Vector2.RIGHT
+var projectile_scene: PackedScene = preload("res://scenes/combat/projectile.tscn")
+var _default_ranged_mode: RangedModeData = preload("res://resources/ranged_modes/default_free_aim.tres")
+
+## Spell state
+@export var spell_slots: Array[SpellData] = []
+var spell_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]
+var queued_spell_index: int = -1  # Which spell is being aimed (-1 = none)
+var active_toggles: Array[bool] = [false, false, false, false]
+
 ## Physics
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
@@ -89,6 +102,15 @@ func _ready():
 	else:
 		push_error("No CharacterStats assigned to Player!")
 	
+	# Load default test spells if none assigned
+	if spell_slots.is_empty():
+		spell_slots = [
+			preload("res://resources/spells/arcane_bolt.tres"),
+			preload("res://resources/spells/focus_strike.tres"),
+			preload("res://resources/spells/haste.tres"),
+			preload("res://resources/spells/mana_blast.tres"),
+		]
+
 	# Check raycasts
 	if not wall_check_left:
 		push_error("WallCheckLeft not found!")
@@ -160,6 +182,25 @@ func _physics_process(delta):
 	if melee_cooldown_timer > 0:
 		melee_cooldown_timer -= delta
 
+	if ranged_cooldown_timer > 0:
+		ranged_cooldown_timer -= delta
+
+	# Spell cooldowns
+	for i in 4:
+		if spell_cooldowns[i] > 0:
+			spell_cooldowns[i] -= delta
+
+	# Toggle spell mana drain
+	for i in 4:
+		if active_toggles[i] and i < spell_slots.size() and spell_slots[i] != null:
+			var drain := spell_slots[i].toggle_mana_drain * delta
+			current_mana -= drain
+			if current_mana <= 0:
+				current_mana = 0.0
+				active_toggles[i] = false
+				if debug_hud:
+					debug_hud.log_action("[color=gray]%s OFF (no mana)[/color]" % spell_slots[i].spell_name)
+
 	if block_broken_timer > 0:
 		block_broken_timer -= delta
 		if block_broken_timer <= 0:
@@ -210,6 +251,8 @@ func _physics_process(delta):
 	if not is_coalescing and not is_attacking and not is_blocking:
 		handle_dash()
 
+	handle_ranged_mode()
+	handle_spell_input()
 	handle_attack_input()
 
 	# Movement: not while dashing, wall jump locked, coalescing, recovering, attacking, or blocking
@@ -221,6 +264,8 @@ func _physics_process(delta):
 	update_hud()
 	update_facing_direction()
 	update_animation()
+	if is_in_ranged_mode or queued_spell_index >= 0:
+		queue_redraw()
 
 func handle_movement(delta):
 	# Get input direction
@@ -257,6 +302,16 @@ func handle_movement(delta):
 	# Block movement penalty (GDD: significantly slows movement)
 	if is_blocking:
 		target_speed = stats.block_move_speed
+
+	# Ranged mode movement penalty
+	if is_in_ranged_mode:
+		var mode := _get_effective_ranged_mode()
+		target_speed *= mode.move_speed_mult
+
+	# Toggle spell speed modifiers
+	for i in 4:
+		if active_toggles[i] and i < spell_slots.size() and spell_slots[i] != null:
+			target_speed *= spell_slots[i].slow_move
 
 	# Apply attunement move speed multiplier
 	if attunements:
@@ -352,6 +407,10 @@ func update_hud():
 		state = "Spell Locked (%.1fs)" % coalescence_spell_lockout
 	elif is_dashing:
 		state = "DASHING"
+	elif queued_spell_index >= 0 and queued_spell_index < spell_slots.size() and spell_slots[queued_spell_index] != null:
+		state = "Spell Queued: %s" % spell_slots[queued_spell_index].spell_name
+	elif is_in_ranged_mode:
+		state = "RANGED MODE"
 	elif is_charging_heavy:
 		state = "Charging Heavy (%.1fs)" % heavy_charge_timer
 	elif melee_cooldown_timer > 0:
@@ -373,6 +432,10 @@ func update_hud():
 	
 	# Update combo display
 	debug_hud.update_combo(combo_count, can_combo)
+
+	# Update spell display
+	if debug_hud.has_method("update_spells"):
+		debug_hud.update_spells(spell_slots, spell_cooldowns, active_toggles, queued_spell_index)
 
 func handle_dash():
 	if Input.is_action_just_pressed("dash") and dash_available:
@@ -583,7 +646,9 @@ func handle_attack_timers(delta):
 			is_charging_heavy = false
 
 func handle_attack_input():
-	# Can't attack while coalescing, dashing, recovery, blocking, or on melee cooldown
+	# Can't melee while in ranged mode, spell queue, coalescing, dashing, recovery, blocking, or on cooldown
+	if is_in_ranged_mode or queued_spell_index >= 0:
+		return
 	if is_coalescing or is_dashing or coalescence_recovery_timer > 0 or wall_jump_lock_timer > 0 or is_blocking:
 		return
 	if melee_cooldown_timer > 0:
@@ -834,6 +899,9 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	coalescence_spell_lockout = 0.0
 	block_broken_timer = 0.0
 	melee_cooldown_timer = 0.0
+	is_in_ranged_mode = false
+	ranged_cooldown_timer = 0.0
+	queued_spell_index = -1
 
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
@@ -1001,6 +1069,9 @@ func die():
 	is_flinched = false
 	is_staggered = false
 	is_charging_heavy = false
+	is_in_ranged_mode = false
+	queued_spell_index = -1
+	active_toggles = [false, false, false, false]
 	stun_timer = 0.0
 	melee_collision.disabled = true
 	
@@ -1026,10 +1097,226 @@ func respawn():
 	block_broken_timer = 0.0
 	is_charging_heavy = false
 	melee_cooldown_timer = 0.0
-	
+	is_in_ranged_mode = false
+	ranged_cooldown_timer = 0.0
+	queued_spell_index = -1
+	spell_cooldowns = [0.0, 0.0, 0.0, 0.0]
+	active_toggles = [false, false, false, false]
+
 	# Visual feedback
 	if animated_sprite:
 		animated_sprite.modulate = Color.WHITE
-	
+
 	if debug_hud:
 		debug_hud.log_action("[color=lime]Respawned![/color]")
+
+# ---- Ranged Mode ----
+
+## Returns the effective ranged mode: attunement override > stats.ranged_mode > fallback default.
+func _get_effective_ranged_mode() -> RangedModeData:
+	if attunements:
+		var override := attunements.get_ranged_mode_override()
+		if override != null:
+			return override
+	if stats and stats.ranged_mode:
+		return stats.ranged_mode
+	return _default_ranged_mode
+
+func handle_ranged_mode():
+	# Can't enter ranged mode during these states
+	if is_attacking or is_blocking or is_coalescing or is_dashing:
+		is_in_ranged_mode = false
+		return
+
+	var mode := _get_effective_ranged_mode()
+	if mode.mode_type == "none":
+		is_in_ranged_mode = false
+		return
+
+	if Input.is_action_pressed("ranged_mode"):
+		is_in_ranged_mode = true
+		aim_direction = (get_global_mouse_position() - global_position).normalized()
+
+		# Fire on LMB (only if no spell queued)
+		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
+			fire_projectile(mode)
+	else:
+		is_in_ranged_mode = false
+
+func fire_projectile(mode: RangedModeData):
+	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
+	var proj = scene.instantiate()
+	proj.global_position = global_position + aim_direction * 40
+	proj.direction = aim_direction
+	proj.speed = mode.projectile_speed
+	proj.damage = mode.damage
+	proj.interrupt_type = mode.interrupt_type
+	proj.source = self
+	get_tree().current_scene.add_child(proj)
+	# Apply projectile color
+	if proj.has_node("ColorRect"):
+		proj.get_node("ColorRect").color = mode.projectile_color
+	ranged_cooldown_timer = mode.fire_cooldown
+
+	if debug_hud:
+		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
+
+# ---- Spell System ----
+
+func handle_spell_input():
+	if is_coalescing or is_dashing or coalescence_spell_lockout > 0:
+		return
+
+	# Check spell keys 1-4
+	for i in 4:
+		var action_name := "spell_%d" % (i + 1)
+		if Input.is_action_just_pressed(action_name):
+			_on_spell_key_pressed(i)
+
+	# If a spell is queued and LMB pressed, cast it
+	if queued_spell_index >= 0 and Input.is_action_just_pressed("light_attack"):
+		cast_spell(queued_spell_index)
+
+func _on_spell_key_pressed(index: int):
+	if index >= spell_slots.size() or spell_slots[index] == null:
+		return
+
+	var spell := spell_slots[index]
+
+	if spell.cast_type == "toggled":
+		_toggle_spell(index)
+	else:
+		# Targeted or free_aim: queue/cancel
+		if queued_spell_index == index:
+			# Cancel queue
+			queued_spell_index = -1
+			if debug_hud:
+				debug_hud.log_action("[color=gray]Spell cancelled[/color]")
+		else:
+			if spell_cooldowns[index] > 0:
+				if debug_hud:
+					debug_hud.log_action("[color=red]On cooldown (%.1fs)[/color]" % spell_cooldowns[index])
+				return
+			if current_mana < spell.mana_cost:
+				if debug_hud:
+					debug_hud.log_action("[color=red]Not enough mana[/color]")
+				return
+			queued_spell_index = index
+			if debug_hud:
+				debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name)
+
+func _toggle_spell(index: int):
+	var spell := spell_slots[index]
+	if active_toggles[index]:
+		active_toggles[index] = false
+		if debug_hud:
+			debug_hud.log_action("[color=gray]%s OFF[/color]" % spell.spell_name)
+	else:
+		if spell_cooldowns[index] > 0:
+			if debug_hud:
+				debug_hud.log_action("[color=red]On cooldown (%.1fs)[/color]" % spell_cooldowns[index])
+			return
+		if current_mana < spell.mana_cost:
+			if debug_hud:
+				debug_hud.log_action("[color=red]Not enough mana[/color]")
+			return
+		var spent := use_mana(spell.mana_cost, "spell_toggle")
+		if spent > 0:
+			active_toggles[index] = true
+			if debug_hud:
+				debug_hud.log_action("[color=violet]%s ON[/color]" % spell.spell_name, -spent)
+
+func cast_spell(index: int):
+	if index >= spell_slots.size() or spell_slots[index] == null:
+		queued_spell_index = -1
+		return
+
+	var spell := spell_slots[index]
+
+	# For targeted spells, find target first (don't consume mana if no target)
+	var target_body: Node = null
+	if spell.cast_type == "targeted":
+		target_body = _find_target_near_cursor()
+		if target_body == null:
+			if debug_hud:
+				debug_hud.log_action("[color=red]No target found[/color]")
+			return
+
+	var spent := use_mana(spell.mana_cost, "spell_cast")
+	if spent <= 0:
+		queued_spell_index = -1
+		return
+
+	spell_cooldowns[index] = spell.cooldown
+	queued_spell_index = -1
+
+	match spell.cast_type:
+		"free_aim":
+			_fire_spell_projectile(spell)
+		"targeted":
+			_fire_targeted_projectile(spell, target_body)
+
+	if debug_hud:
+		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name, -spent)
+
+func _fire_spell_projectile(spell: SpellData):
+	var dir := (get_global_mouse_position() - global_position).normalized()
+	var proj = projectile_scene.instantiate()
+	proj.global_position = global_position + dir * 40
+	proj.direction = dir
+	proj.speed = spell.projectile_speed
+	proj.damage = spell.damage
+	proj.interrupt_type = spell.interrupt_type
+	proj.source = self
+	get_tree().current_scene.add_child(proj)
+	# Tint spell projectile
+	if proj.has_node("ColorRect"):
+		proj.get_node("ColorRect").color = spell.projectile_color
+
+func _fire_targeted_projectile(spell: SpellData, target: Node):
+	var dir := (target.global_position - global_position).normalized()
+	var proj = projectile_scene.instantiate()
+	proj.global_position = global_position + dir * 40
+	proj.direction = dir
+	proj.speed = spell.projectile_speed
+	proj.damage = spell.damage
+	proj.interrupt_type = spell.interrupt_type
+	proj.source = self
+	get_tree().current_scene.add_child(proj)
+	if proj.has_node("ColorRect"):
+		proj.get_node("ColorRect").color = spell.projectile_color
+
+func _find_target_near_cursor() -> Node:
+	var mouse_pos := get_global_mouse_position()
+	var nearest: Node = null
+	var nearest_dist := 200.0  # Max targeting range from cursor
+
+	# Search all bodies that can take damage
+	for body in get_tree().get_nodes_in_group("enemy"):
+		var dist := mouse_pos.distance_to(body.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = body
+
+	# Also check training dummies
+	for body in get_tree().get_nodes_in_group("training_dummy"):
+		var dist := mouse_pos.distance_to(body.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = body
+
+	return nearest
+
+# ---- Draw (aim line) ----
+
+func _draw():
+	if is_in_ranged_mode or queued_spell_index >= 0:
+		var dir := (get_global_mouse_position() - global_position).normalized()
+		var aim_end := dir * 120
+		var line_color: Color
+		if is_in_ranged_mode:
+			var mode := _get_effective_ranged_mode()
+			line_color = Color(mode.projectile_color, 0.5)
+		else:
+			line_color = Color(0.6, 0.3, 1.0, 0.5)
+		draw_line(Vector2.ZERO, aim_end, line_color, 2.0)

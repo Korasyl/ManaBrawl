@@ -58,7 +58,7 @@ offset_top = -200.0
 offset_right = 25.0
 offset_bottom = 200.0
 
-[node name="TrainingDummy" parent="." unique_id=975334861 instance=ExtResource("3_gul7h")]
+[node name="TrainingDummy" parent="." unique_id=975334861 groups=["training_dummy"] instance=ExtResource("3_gul7h")]
 position = Vector2(230, 409)
 collision_mask = 1
 
