@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/mending_light.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Mending Light"
+description = "Calls down a gentle light on an ally, restoring health. Cannot target enemies."
+mana_cost = 22.0
+cooldown = 6.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.4, 1.0, 0.6, 1)
+targeted_delivery = "apply_at_target"
+can_target_allies = true
+can_target_enemies = false
+heal_amount = 30.0
+slow_move = 1.0
+toggle_mana_drain = 0.0

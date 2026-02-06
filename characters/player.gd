@@ -1602,7 +1602,7 @@ func handle_channeled_spell(delta: float) -> void:
 			_fire_channeled_tick(spell)
 
 func _fire_channeled_tick(spell: SpellData) -> void:
-	var target: Node = _find_target_near_cursor(spell.can_target_allies)
+	var target: Node = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies)
 	if target == null:
 		return
 	_fire_targeted_projectile(spell, target)
@@ -1642,7 +1642,7 @@ func cast_spell(index: int):
 	# For targeted spells, require a valid target before resolving cast
 	var target_body: Node = null
 	if spell.cast_type == "targeted":
-		target_body = _find_target_near_cursor(spell.can_target_allies)
+		target_body = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies)
 		if target_body == null:
 			if debug_hud:
 				debug_hud.log_action("[color=red]No target found[/color]")
@@ -1739,8 +1739,12 @@ func _fire_targeted_projectile(spell: SpellData, target: Node):
 	if targeted_delivery == "apply_at_target":
 		if spell.spell_scene:
 			_spawn_spell_scene(spell, target.global_position, dir, target, spell_ctx)
-		elif target.has_method("take_damage"):
-			target.take_damage(final_damage, Vector2.ZERO, spell.interrupt_type, spell_ctx)
+		else:
+			var target_is_ally := is_ally(target)
+			if target_is_ally and spell.heal_amount > 0.0 and target.has_method("apply_healing"):
+				target.apply_healing(spell.heal_amount, spell_ctx)
+			elif not target_is_ally and target.has_method("take_damage"):
+				target.take_damage(final_damage, Vector2.ZERO, spell.interrupt_type, spell_ctx)
 		return
 		
 	if spell.spell_scene:
@@ -1805,24 +1809,24 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		(entity as SpellEntity).attach_to_target(target as Node2D)
 
 
-func _find_target_near_cursor(include_allies: bool = false) -> Node:
+func _find_target_near_cursor(include_allies: bool = false, include_enemies: bool = true) -> Node:
 	var mouse_pos := get_global_mouse_position()
 	var nearest: Node = null
 	var nearest_dist := 200.0  # Max targeting range from cursor
 
-	# Search all bodies that can take damage
-	for body in get_tree().get_nodes_in_group("enemy"):
-		var dist := mouse_pos.distance_to(body.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = body
+	# Search enemies / training dummies
+	if include_enemies:
+		for body in get_tree().get_nodes_in_group("enemy"):
+			var dist := mouse_pos.distance_to(body.global_position)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest = body
 
-	# Also check training dummies
-	for body in get_tree().get_nodes_in_group("training_dummy"):
-		var dist := mouse_pos.distance_to(body.global_position)
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest = body
+		for body in get_tree().get_nodes_in_group("training_dummy"):
+			var dist := mouse_pos.distance_to(body.global_position)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest = body
 
 	# Include allies (other players on same team) if the spell allows it
 	if include_allies:
@@ -1997,7 +2001,7 @@ func _draw():
 			if queued_spell and queued_spell.cast_type == "targeted":
 				var delivery := _get_spell_targeted_delivery(queued_spell)
 				if delivery == "apply_at_target":
-					var target := _find_target_near_cursor(queued_spell.can_target_allies)
+					var target := _find_target_near_cursor(queued_spell.can_target_allies, queued_spell.can_target_enemies)
 					if target is Node2D:
 						_draw_target_indicator(target, queued_spell.projectile_color)
 					return
