@@ -1828,11 +1828,17 @@ func _find_target_near_cursor(include_allies: bool = false, include_enemies: boo
 				nearest_dist = dist
 				nearest = body
 
-	# Include allies (other players on same team) if the spell allows it
+	# Include allies (other players on same team + self) if the spell allows it
 	if include_allies:
+		# Self-targeting: caster is always a valid ally target
+		var self_dist := mouse_pos.distance_to(global_position)
+		if self_dist < nearest_dist:
+			nearest_dist = self_dist
+			nearest = self
+
 		for body in get_tree().get_nodes_in_group("player"):
 			if body == self:
-				continue
+				continue  # Already handled above
 			if not (body is Node2D):
 				continue
 			var dist := mouse_pos.distance_to(body.global_position)
