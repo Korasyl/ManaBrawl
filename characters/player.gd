@@ -1991,7 +1991,7 @@ func _draw():
 			draw_line(local_pos, rot_end, Color(1.0, 0.8, 0.2, 0.8), 2.0)
 		return
 
-	if is_in_ranged_mode or queued_spell_index >= 0:
+	if is_in_ranged_mode or queued_spell_index >= 0 or is_channeling_spell:
 		# Targeted ranged mode: show target indicator instead of aim line
 		if is_in_ranged_mode:
 			var mode := _get_effective_ranged_mode()
@@ -2001,16 +2001,21 @@ func _draw():
 					_draw_target_indicator(target)
 				return
 
-		# Queued targeted spell with apply_at_target: show same circle on target
+		# Resolve the active spell: either queued or being channeled
+		var active_spell: SpellData = null
 		if queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
-			var queued_spell: SpellData = spell_slots[queued_spell_index]
-			if queued_spell and queued_spell.cast_type == "targeted":
-				var delivery := _get_spell_targeted_delivery(queued_spell)
-				if delivery == "apply_at_target":
-					var target := _find_target_near_cursor(queued_spell.can_target_allies, queued_spell.can_target_enemies)
-					if target is Node2D:
-						_draw_target_indicator(target, queued_spell.projectile_color)
-					return
+			active_spell = spell_slots[queued_spell_index]
+		elif is_channeling_spell and channel_spell_index >= 0 and channel_spell_index < spell_slots.size():
+			active_spell = spell_slots[channel_spell_index]
+
+		# Targeted apply_at_target spells: show circle on target (queued or channeling)
+		if active_spell and active_spell.cast_type == "targeted":
+			var delivery := _get_spell_targeted_delivery(active_spell)
+			if delivery == "apply_at_target":
+				var target := _find_target_near_cursor(active_spell.can_target_allies, active_spell.can_target_enemies)
+				if target is Node2D:
+					_draw_target_indicator(target, active_spell.projectile_color)
+				return
 
 		var origin_g := _get_projectile_spawn_base()          # global spawn origin (same as projectiles)
 		var origin_l := origin_g - global_position            # convert to local space for _draw()
