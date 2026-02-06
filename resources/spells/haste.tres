@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Haste"
+description = "Toggle: increases movement speed by 40% while active. Drains mana per second."
 mana_cost = 10.0
 cooldown = 2.0
 cast_type = "toggled"

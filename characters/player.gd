@@ -1980,3 +1980,28 @@ func _draw():
 			line_color = Color(0.6, 0.3, 1.0, 0.5)
 
 		draw_line(origin_l, aim_end, line_color, 2.0)
+
+# ---------------------------------------------------------------------------
+# Spell hot-swap helpers (called by SpellSelector UI)
+# ---------------------------------------------------------------------------
+
+func set_spell_slot(index: int, spell: SpellData) -> void:
+	if index < 0 or index >= 4:
+		return
+	# Grow array to size 4 if needed
+	while spell_slots.size() < 4:
+		spell_slots.append(null)
+	# Cancel any active queue/channel/toggle for the slot being changed
+	if queued_spell_index == index or (is_channeling_spell and channel_spell_index == index):
+		_clear_spell_queue(true)
+	if index < active_toggles.size() and active_toggles[index]:
+		active_toggles[index] = false
+	# Reset cooldown for the changed slot
+	if index < spell_cooldowns.size():
+		spell_cooldowns[index] = 0.0
+	spell_slots[index] = spell
+
+func get_spell_slot(index: int) -> SpellData:
+	if index < 0 or index >= spell_slots.size():
+		return null
+	return spell_slots[index]
