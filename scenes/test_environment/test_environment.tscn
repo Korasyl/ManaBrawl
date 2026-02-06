@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://gn3trux6bfkf" path="res://scenes/ui/stats_switcher.tscn" id="4_fnpii"]
 [ext_resource type="Script" uid="uid://e8o28f46ys1y" path="res://scenes/ui/stats_switcher.gd" id="5_14n3e"]
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
-[ext_resource type="PackedScene" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
+[ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -64,27 +64,27 @@ collision_mask = 1
 
 [node name="AttunementSelector" parent="." unique_id=1982629802 instance=ExtResource("6_tskly")]
 offset_left = -852.0
-offset_top = 26.0
+offset_top = -68.0
 offset_right = -852.0
-offset_bottom = 26.0
+offset_bottom = -68.0
 
 [node name="DebugHUD" parent="." unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
 offset_left = -868.0
-offset_top = 174.0
+offset_top = 80.0
 offset_right = -868.0
-offset_bottom = 174.0
+offset_bottom = 80.0
 
 [node name="StatsSwitcher" parent="." unique_id=1730580019 instance=ExtResource("4_fnpii")]
-offset_left = -849.0
-offset_top = 439.0
-offset_right = -849.0
-offset_bottom = 439.0
+offset_left = -660.0
+offset_top = -50.0
+offset_right = -660.0
+offset_bottom = -50.0
 script = ExtResource("5_14n3e")
 player_path = NodePath("../Player")
 
-[node name="DummyBehaviorSelector" parent="." instance=ExtResource("7_bhvr")]
-offset_left = -849.0
-offset_top = 475.0
-offset_right = -849.0
-offset_bottom = 475.0
+[node name="DummyBehaviorSelector" parent="." unique_id=1977472266 instance=ExtResource("7_bhvr")]
+offset_left = -660.0
+offset_top = 27.0
+offset_right = -660.0
+offset_bottom = 27.0
 dummy_path = NodePath("../TrainingDummy")

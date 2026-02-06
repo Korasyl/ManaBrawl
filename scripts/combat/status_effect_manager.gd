@@ -27,7 +27,7 @@ func _physics_process(delta):
 		# Apply DoT
 		if effect.type == StatusEffect.Type.BURNING and _owner != null:
 			if _owner.has_method("take_damage"):
-				var dot_damage := effect.magnitude * delta
+				var dot_damage: float = float(effect.magnitude) * float(delta)
 				var ctx := {ContextKeys.SOURCE: effect.source, ContextKeys.DAMAGE_TYPE: "dot"}
 				_owner.take_damage(dot_damage, Vector2.ZERO, "none", ctx)
 

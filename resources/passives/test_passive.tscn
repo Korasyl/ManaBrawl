@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://b0y8j38ejp3qx"]
+
+[ext_resource type="Script" uid="uid://ctvxtg4if68dh" path="res://scripts/combat/passive_skill.gd" id="1_b40iy"]
+
+[node name="TestPassive" type="Node" unique_id=1099416093]
+script = ExtResource("1_b40iy")
+metadata/_custom_type_script = "uid://ctvxtg4if68dh"

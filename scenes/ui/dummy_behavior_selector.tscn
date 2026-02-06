@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bameytsdik84q"]
 
-[ext_resource type="Script" path="res://scenes/ui/dummy_behavior_selector.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://duufs7ec8ovvu" path="res://scenes/ui/dummy_behavior_selector.gd" id="1_script"]
 
-[node name="DummyBehaviorSelector" type="Control"]
+[node name="DummyBehaviorSelector" type="Control" unique_id=233658075]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,16 +11,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=2010407399]
 layout_mode = 0
 offset_right = 180.0
 offset_bottom = 18.0
-text = "Dummy Behavior"
 theme_override_font_sizes/font_size = 12
+text = "Dummy Behavior"
 
-[node name="BehaviorDropdown" type="OptionButton" parent="."]
+[node name="BehaviorDropdown" type="OptionButton" parent="." unique_id=1616956490]
 layout_mode = 0
 offset_top = 20.0
-offset_right = 180.0
+offset_right = 195.0
 offset_bottom = 50.0
 focus_mode = 0

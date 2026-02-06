@@ -65,7 +65,7 @@ func update_animation(anim_name: String):
 func update_combo(count: int, window_active: bool):
 	if combo_label:
 		if window_active:
-			combo_label.text = "[color=lime]Combo: %d (READY!)[/color]" % count
+			combo_label.text = "Combo: %d (READY!)" % count
 		elif count > 0:
 			combo_label.text = "Combo: %d" % count
 		else:

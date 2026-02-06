@@ -83,6 +83,7 @@ var melee_cooldown_timer: float = 0.0  # Prevents attack spam after combo
 const MELEE_COOLDOWN_DURATION: float = 0.4
 
 ## Ranged state
+@export var projectile_spawn_offset: Vector2 = Vector2(0, -24) # Projectile origin point
 var is_in_ranged_mode: bool = false
 var ranged_cooldown_timer: float = 0.0
 var aim_direction: Vector2 = Vector2.RIGHT
@@ -211,7 +212,7 @@ func _physics_process(delta):
 	# Toggle spell mana drain
 	for i in 4:
 		if active_toggles[i] and i < spell_slots.size() and spell_slots[i] != null:
-			var drain := spell_slots[i].toggle_mana_drain * delta
+			var drain: float = spell_slots[i].toggle_mana_drain * delta
 			current_mana -= drain
 			if current_mana <= 0:
 				current_mana = 0.0
@@ -1210,7 +1211,7 @@ func handle_ranged_mode():
 func fire_projectile(mode: RangedModeData):
 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
 	var proj = scene.instantiate()
-	proj.global_position = global_position + aim_direction * 40
+	proj.global_position = _get_projectile_spawn_base() + aim_direction * 40
 	proj.direction = aim_direction
 	proj.speed = mode.projectile_speed
 	proj.damage = mode.damage
@@ -1226,6 +1227,9 @@ func fire_projectile(mode: RangedModeData):
 
 	if debug_hud:
 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
+
+func _get_projectile_spawn_base() -> Vector2:
+	return global_position + projectile_spawn_offset	
 
 # ---- Spell System ----
 
@@ -1347,12 +1351,12 @@ func _fire_spell_projectile(spell: SpellData):
 
 	# If spell has a custom scene, spawn it directly (it handles its own behavior)
 	if spell.spell_scene:
-		_spawn_spell_scene(spell, global_position + dir * 40, dir)
+		_spawn_spell_scene(spell, _get_projectile_spawn_base() + dir * 40, dir)
 		return
 
 	# Default: fire a projectile
 	var proj = projectile_scene.instantiate()
-	proj.global_position = global_position + dir * 40
+	proj.global_position = _get_projectile_spawn_base() + dir * 40
 	proj.direction = dir
 	proj.speed = spell.projectile_speed
 	proj.damage = spell.damage
@@ -1366,14 +1370,14 @@ func _fire_spell_projectile(spell: SpellData):
 		proj.get_node("ColorRect").color = spell.projectile_color
 
 func _fire_targeted_projectile(spell: SpellData, target: Node):
-	var dir := (target.global_position - global_position).normalized()
+	var dir: Vector2 = (target.global_position - global_position).normalized()
 
 	if spell.spell_scene:
 		_spawn_spell_scene(spell, global_position + dir * 40, dir, target)
 		return
 
 	var proj = projectile_scene.instantiate()
-	proj.global_position = global_position + dir * 40
+	proj.global_position = _get_projectile_spawn_base() + dir * 40
 	proj.direction = dir
 	proj.speed = spell.projectile_speed
 	proj.damage = spell.damage
@@ -1555,12 +1559,17 @@ func _draw():
 		return
 
 	if is_in_ranged_mode or queued_spell_index >= 0:
-		var dir := (get_global_mouse_position() - global_position).normalized()
-		var aim_end := dir * 120
+		var origin_g := _get_projectile_spawn_base()          # global spawn origin (same as projectiles)
+		var origin_l := origin_g - global_position            # convert to local space for _draw()
+
+		var dir := (get_global_mouse_position() - origin_g).normalized()
+		var aim_end := origin_l + dir * 120
+
 		var line_color: Color
 		if is_in_ranged_mode:
 			var mode := _get_effective_ranged_mode()
 			line_color = Color(mode.projectile_color, 0.5)
 		else:
 			line_color = Color(0.6, 0.3, 1.0, 0.5)
-		draw_line(Vector2.ZERO, aim_end, line_color, 2.0)
+
+		draw_line(origin_l, aim_end, line_color, 2.0)

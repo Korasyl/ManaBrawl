@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="SpellData" format=3]
+[gd_resource type="Resource" script_class="SpellData" format=3 uid="uid://142ycy0h1ri1"]
 
-[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="Script" uid="uid://b6vugw0yoomsi" path="res://scripts/combat/spell_data.gd" id="1_spell"]
 
 [resource]
 script = ExtResource("1_spell")
@@ -11,6 +11,5 @@ cast_type = "toggled"
 damage = 0.0
 interrupt_type = "none"
 projectile_speed = 0.0
-projectile_color = Color(0.3, 1.0, 0.5, 1)
+projectile_color = Color(0.3, 1, 0.5, 1)
 slow_move = 1.4
-toggle_mana_drain = 5.0

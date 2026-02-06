@@ -61,9 +61,9 @@ text = "State: Idle"
 [node name="ActionLog" type="RichTextLabel" parent="." unique_id=481831767]
 layout_mode = 0
 offset_left = 20.0
-offset_top = 199.0
+offset_top = 200.0
 offset_right = 280.0
-offset_bottom = 251.0
+offset_bottom = 252.0
 bbcode_enabled = true
 
 [node name="AnimationLabel" type="Label" parent="." unique_id=1615065883]
@@ -82,11 +82,11 @@ offset_right = 93.0
 offset_bottom = 198.0
 text = "Combo: 0"
 
-[node name="SpellLabel" type="RichTextLabel" parent="."]
+[node name="SpellLabel" type="RichTextLabel" parent="." unique_id=1676590117]
 layout_mode = 0
 offset_left = 20.0
-offset_top = 260.0
+offset_top = 267.0
 offset_right = 290.0
-offset_bottom = 380.0
+offset_bottom = 384.0
 bbcode_enabled = true
 text = "[1] -- [2] -- [3] -- [4] --"

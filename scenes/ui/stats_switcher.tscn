@@ -13,3 +13,9 @@ layout_mode = 0
 offset_right = 32.0
 offset_bottom = 20.0
 focus_mode = 0
+
+[node name="Label" type="Label" parent="." unique_id=1997116549]
+layout_mode = 0
+offset_top = -23.0
+offset_right = 127.0
+text = "Character Select"
