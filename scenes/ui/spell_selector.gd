@@ -286,7 +286,13 @@ func _build_tooltip_text(spell: SpellData) -> String:
 		"targeted": type_color = "orange"
 		"toggled": type_color = "lime"
 		"placement": type_color = "yellow"
-	lines.append("[color=%s]%s[/color]" % [type_color, spell.cast_type.capitalize()])
+	var type_label := spell.cast_type.capitalize()
+	if spell.cast_type == "targeted":
+		type_label += " (%s)" % spell.targeted_delivery.replace("_", " ")
+	lines.append("[color=%s]%s[/color]" % [type_color, type_label])
+
+	if spell.can_target_allies:
+		lines.append("[color=green]Can target allies[/color]")
 
 	# Core stats
 	lines.append("[color=dodgerblue]Mana:[/color] %.0f" % spell.mana_cost)

@@ -1602,7 +1602,7 @@ func handle_channeled_spell(delta: float) -> void:
 			_fire_channeled_tick(spell)
 
 func _fire_channeled_tick(spell: SpellData) -> void:
-	var target: Node = _find_target_near_cursor()
+	var target: Node = _find_target_near_cursor(spell.can_target_allies)
 	if target == null:
 		return
 	_fire_targeted_projectile(spell, target)
@@ -1642,7 +1642,7 @@ func cast_spell(index: int):
 	# For targeted spells, require a valid target before resolving cast
 	var target_body: Node = null
 	if spell.cast_type == "targeted":
-		target_body = _find_target_near_cursor()
+		target_body = _find_target_near_cursor(spell.can_target_allies)
 		if target_body == null:
 			if debug_hud:
 				debug_hud.log_action("[color=red]No target found[/color]")
@@ -1805,7 +1805,7 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		(entity as SpellEntity).attach_to_target(target as Node2D)
 
 
-func _find_target_near_cursor() -> Node:
+func _find_target_near_cursor(include_allies: bool = false) -> Node:
 	var mouse_pos := get_global_mouse_position()
 	var nearest: Node = null
 	var nearest_dist := 200.0  # Max targeting range from cursor
@@ -1823,6 +1823,18 @@ func _find_target_near_cursor() -> Node:
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = body
+
+	# Include allies (other players on same team) if the spell allows it
+	if include_allies:
+		for body in get_tree().get_nodes_in_group("player"):
+			if body == self:
+				continue
+			if not (body is Node2D):
+				continue
+			var dist := mouse_pos.distance_to(body.global_position)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest = body
 
 	return nearest
 
@@ -1913,6 +1925,23 @@ func _load_passive():
 
 # ---- Draw (aim line) ----
 
+## Draw a targeting circle indicator on [target].
+## Used by both targeted ranged modes and apply_at_target spells.
+## [spell_color] overrides the default ally/enemy coloring with spell tint when provided.
+func _draw_target_indicator(target: Node2D, spell_color: Color = Color.TRANSPARENT) -> void:
+	var target_local: Vector2 = target.global_position - global_position
+	var is_tgt_ally := is_ally(target)
+
+	var indicator_color: Color
+	if spell_color != Color.TRANSPARENT:
+		# Use the spell's projectile color but adjust brightness for ally/enemy
+		indicator_color = Color(spell_color, 0.7)
+	else:
+		indicator_color = Color(0.3, 1.0, 0.3, 0.6) if is_tgt_ally else Color(1.0, 0.3, 0.3, 0.6)
+
+	draw_circle(target_local, 18.0, Color(indicator_color.r, indicator_color.g, indicator_color.b, 0.15))
+	draw_arc(target_local, 22.0, 0, TAU, 24, indicator_color, 2.0)
+
 func _draw():
 	# Placement mode preview
 	if is_placing:
@@ -1959,12 +1988,19 @@ func _draw():
 			if mode.mode_type == "targeted":
 				var target := _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
 				if target is Node2D:
-					var target_local: Vector2 = target.global_position - global_position
-					var is_tgt_ally := is_ally(target)
-					var indicator_color := Color(0.3, 1.0, 0.3, 0.6) if is_tgt_ally else Color(1.0, 0.3, 0.3, 0.6)
-					draw_circle(target_local, 18.0, Color(indicator_color.r, indicator_color.g, indicator_color.b, 0.15))
-					draw_arc(target_local, 22.0, 0, TAU, 24, indicator_color, 2.0)
+					_draw_target_indicator(target)
 				return
+
+		# Queued targeted spell with apply_at_target: show same circle on target
+		if queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
+			var queued_spell: SpellData = spell_slots[queued_spell_index]
+			if queued_spell and queued_spell.cast_type == "targeted":
+				var delivery := _get_spell_targeted_delivery(queued_spell)
+				if delivery == "apply_at_target":
+					var target := _find_target_near_cursor(queued_spell.can_target_allies)
+					if target is Node2D:
+						_draw_target_indicator(target, queued_spell.projectile_color)
+					return
 
 		var origin_g := _get_projectile_spawn_base()          # global spawn origin (same as projectiles)
 		var origin_l := origin_g - global_position            # convert to local space for _draw()
