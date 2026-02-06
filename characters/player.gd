@@ -1253,7 +1253,14 @@ func handle_ranged_mode():
 
 		# Fire on LMB (only if no spell queued)
 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
-			fire_projectile(mode)
+			match mode.mode_type:
+				"free_aim":
+					fire_projectile(mode)
+				"targeted":
+					if _fire_targeted_ranged(mode):
+						ranged_cooldown_timer = mode.fire_cooldown
+						if debug_hud:
+							debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
 	else:
 		is_in_ranged_mode = false
 
@@ -1289,6 +1296,8 @@ func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bo
 	for candidate in candidates:
 		if candidate == null or not is_instance_valid(candidate):
 			continue
+		if candidate == self:
+			continue  # Self-targeting handled separately below via allow_self
 		if not ("team_id" in candidate):
 			continue
 		if not (candidate is Node2D):
@@ -1318,6 +1327,17 @@ func _fire_targeted_ranged(mode: RangedModeData) -> bool:
 	if (not is_target_ally) and not mode.targeted_affect_enemies:
 		return false
 
+	if mode.targeted_delivery == "projectile":
+		_fire_targeted_ranged_projectile(mode, target)
+	else:
+		_apply_targeted_ranged_effects(mode, target)
+
+	return true
+
+## Apply a targeted ranged mode's burst + DOT/HOT effects to a target.
+## Extracted as a helper so both instant and projectile delivery can use it.
+func _apply_targeted_ranged_effects(mode: RangedModeData, target: Node) -> void:
+	var is_target_ally: bool = is_ally(target)
 	var effect_id: String = mode.targeted_effect_id if mode.targeted_effect_id != "" else mode.mode_name.to_lower().replace(" ", "_")
 	var ctx := {
 		ContextKeys.SOURCE: self,
@@ -1338,7 +1358,29 @@ func _fire_targeted_ranged(mode: RangedModeData) -> bool:
 		if mode.targeted_dot_duration > 0.0 and mode.targeted_dot_damage_per_second > 0.0 and "status_effects" in target and target.status_effects:
 			target.status_effects.apply_effect(StatusEffect.Type.BURNING, mode.targeted_dot_duration, self, mode.targeted_dot_damage_per_second, effect_id + "_burn")
 
-	return true
+## Fire a homing projectile that delivers targeted ranged mode effects on hit.
+## Used when RangedModeData.targeted_delivery == "projectile".
+func _fire_targeted_ranged_projectile(mode: RangedModeData, target: Node) -> void:
+	var dir := (target.global_position - global_position).normalized()
+	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
+	var proj = scene.instantiate()
+	proj.global_position = _get_projectile_spawn_base() + dir * 40
+	proj.direction = dir
+	proj.speed = mode.projectile_speed
+	proj.damage = mode.targeted_burst_damage
+	proj.damage_type = mode.damage_type
+	proj.interrupt_type = mode.interrupt_type
+	proj.source = self
+	proj.team_id = team_id
+	if proj is Projectile:
+		proj.homing_target = target if target is Node2D else null
+		proj.homing_turn_speed = mode.targeted_homing_turn_speed
+		proj.hit_only_homing_target = true
+		proj.on_hit = func(hit_body: Node) -> void:
+			_apply_targeted_ranged_effects(mode, hit_body)
+	get_tree().current_scene.add_child(proj)
+	if proj.has_node("ColorRect"):
+		proj.get_node("ColorRect").color = mode.projectile_color
 
 func _get_projectile_spawn_base() -> Vector2:
 	return global_position + projectile_spawn_offset	
@@ -1716,8 +1758,8 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		}
 		if target:
 			ctx[ContextKeys.CAST_TARGET] = target
-			for k in extra_ctx.keys():
-				ctx[k] = extra_ctx[k]
+		for k in extra_ctx.keys():
+			ctx[k] = extra_ctx[k]
 		entity.initialize(ctx)
 
 	get_tree().current_scene.add_child(entity)
@@ -1876,6 +1918,19 @@ func _draw():
 		return
 
 	if is_in_ranged_mode or queued_spell_index >= 0:
+		# Targeted ranged mode: show target indicator instead of aim line
+		if is_in_ranged_mode:
+			var mode := _get_effective_ranged_mode()
+			if mode.mode_type == "targeted":
+				var target := _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
+				if target != null:
+					var target_local := target.global_position - global_position
+					var is_tgt_ally := is_ally(target)
+					var indicator_color := Color(0.3, 1.0, 0.3, 0.6) if is_tgt_ally else Color(1.0, 0.3, 0.3, 0.6)
+					draw_circle(target_local, 18.0, Color(indicator_color.r, indicator_color.g, indicator_color.b, 0.15))
+					draw_arc(target_local, 22.0, 0, TAU, 24, indicator_color, 2.0)
+				return
+
 		var origin_g := _get_projectile_spawn_base()          # global spawn origin (same as projectiles)
 		var origin_l := origin_g - global_position            # convert to local space for _draw()
 

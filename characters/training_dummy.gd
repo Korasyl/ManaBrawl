@@ -21,6 +21,9 @@ var spawn_position: Vector2
 ## Team identity (1 = enemy team for demo)
 var team_id: int = 1
 
+## Status effects (needed for DOT/HOT from targeted ranged modes and spells)
+var status_effects: StatusEffectManager
+
 # Stun/Interrupt
 var is_flinched: bool = false
 var is_staggered: bool = false
@@ -74,6 +77,7 @@ const LIGHT_DAMAGE: float = 10.0
 const HEAVY_DAMAGE: float = 20.0
 
 func _ready():
+	add_to_group("training_dummy")
 	attack_hitbox.monitoring = true
 
 	if stats:
@@ -81,6 +85,11 @@ func _ready():
 		update_health_display()
 	else:
 		push_error("No DummyStats assigned to TrainingDummy!")
+
+	# Initialize status effects for DOT/HOT support
+	status_effects = StatusEffectManager.new()
+	add_child(status_effects)
+	status_effects.initialize(self)
 
 	original_color = color_rect.color
 	spawn_position = global_position
@@ -234,6 +243,8 @@ func _reset_combat_state() -> void:
 	attack_cooldown = 0.0
 	dash_timer = 0.0
 	attack_collision.set_deferred("disabled", true)
+	if status_effects:
+		status_effects.clear_all()
 	_update_visual()
 
 func start_behavior() -> void:
@@ -442,6 +453,14 @@ func _apply_attack_overlap_hits() -> void:
 	for b in bodies:
 		_on_attack_hit(b)
 
+func apply_healing(amount: float, _ctx: Dictionary = {}) -> void:
+	if is_dead or amount <= 0.0:
+		return
+	if stats == null:
+		return
+	current_health = min(current_health + amount, stats.max_health)
+	update_health_display()
+
 func is_ally(other: Node) -> bool:
 	if "team_id" in other:
 		return other.team_id == team_id
@@ -572,6 +591,8 @@ func respawn():
 	current_health = stats.max_health
 	velocity = Vector2.ZERO
 	global_position = spawn_position
+	if status_effects:
+		status_effects.clear_all()
 	update_health_display()
 
 	if behavior_mode == BehaviorMode.BLOCK:

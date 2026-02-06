@@ -21,6 +21,14 @@ var spell_data: SpellData = null
 var homing_target: Node2D = null
 var homing_turn_speed: float = 0.0  # radians per second
 
+## If true and homing_target is set, only collide with that specific target (pass through others).
+## Used by targeted ranged mode projectile delivery to avoid hitting unintended bodies.
+var hit_only_homing_target: bool = false
+
+## Optional callback invoked on hitting a valid target. Replaces default take_damage behavior.
+## Signature: func(target: Node) -> void
+var on_hit: Callable = Callable()
+
 
 @onready var collision: CollisionShape2D = $CollisionShape2D
 @onready var visual: ColorRect = $ColorRect
@@ -51,7 +59,6 @@ func _on_body_entered(body):
 	if body == source:
 		return
 
-
 	# Hit walls/destructibles — spawn impact entity if any, then destroy
 	if body is StaticBody2D:
 		if body.has_method("take_damage"):
@@ -63,6 +70,17 @@ func _on_body_entered(body):
 			}
 			body.take_damage(damage, Vector2.ZERO, "none", ctx)
 		_spawn_impact_entity(global_position)
+		queue_free()
+		return
+
+	# Targeted-only projectiles pass through everything except their designated target
+	if hit_only_homing_target and homing_target != null and body != homing_target:
+		return
+
+	# Custom on_hit handler (used by targeted ranged mode projectile delivery)
+	if on_hit.is_valid():
+		on_hit.call(body)
+		_spawn_impact_entity(body.global_position)
 		queue_free()
 		return
 
