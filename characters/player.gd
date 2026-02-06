@@ -1649,6 +1649,12 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		entity.initialize(ctx)
 
 	get_tree().current_scene.add_child(entity)
+	
+	# Apply-at-target spell scenes should stay attached to the target until they end.
+	var targeted_delivery: String = String(extra_ctx.get(ContextKeys.TARGETED_DELIVERY, spell.targeted_delivery))
+	if targeted_delivery == "apply_at_target" and entity is SpellEntity and target is Node2D:
+		(entity as SpellEntity).attach_to_target(target as Node2D)
+
 
 func _find_target_near_cursor() -> Node:
 	var mouse_pos := get_global_mouse_position()

@@ -19,6 +19,11 @@ var current_hp: float = 0.0
 ## Spell data reference (set by caster before adding to scene)
 var spell_data: SpellData = null
 
+## Optional follow behavior (used by apply_at_target style spells)
+var follow_target: Node2D = null
+var follow_offset: Vector2 = Vector2.ZERO
+
+
 func _ready():
 	if max_hp > 0:
 		current_hp = max_hp
@@ -26,6 +31,13 @@ func _ready():
 	_on_spawn()
 
 func _physics_process(delta):
+	if follow_target != null:
+		if not is_instance_valid(follow_target):
+			_on_expire()
+			queue_free()
+			return
+		global_position = follow_target.global_position + follow_offset
+
 	if max_lifetime > 0:
 		_lifetime_timer += delta
 		if _lifetime_timer >= max_lifetime:
@@ -45,6 +57,13 @@ func _spell_process(_delta: float) -> void:
 ## Override in subclasses — called when lifetime expires or HP depletes.
 func _on_expire() -> void:
 	pass
+
+func attach_to_target(target: Node2D, offset: Vector2 = Vector2.ZERO) -> void:
+	follow_target = target
+	follow_offset = offset
+	if follow_target != null and is_instance_valid(follow_target):
+		global_position = follow_target.global_position + follow_offset
+
 
 ## Destructible entities: call this to deal damage to the spell entity.
 func take_damage(damage: float, _knockback: Vector2 = Vector2.ZERO, _interrupt_type: String = "none", _ctx: Dictionary = {}):
