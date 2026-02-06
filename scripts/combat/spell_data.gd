@@ -22,6 +22,7 @@ class_name SpellData
 ## Targeted spell behavior
 @export_enum("projectile", "apply_at_target") var targeted_delivery: String = "projectile"
 @export var targeted_homing_turn_speed: float = 8.0  # radians per second
+@export var can_target_allies: bool = false
 
 ## Channeled casting
 @export var is_channeled: bool = false
