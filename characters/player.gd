@@ -1568,6 +1568,12 @@ func handle_channeled_spell(delta: float) -> void:
 		_clear_spell_queue(false, true)
 		return
 
+	# Only drain mana when we have a valid target to fire at
+	var has_target := _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies) != null
+	if not has_target:
+		# Keep the channel alive but don't drain mana or fire — just wait
+		return
+
 	var channel_ctx := {
 		ContextKeys.SPELL_DATA: spell,
 		ContextKeys.IS_CHANNELED: true,
@@ -1594,7 +1600,7 @@ func handle_channeled_spell(delta: float) -> void:
 	if attunements:
 		channel_shots = float(attunements.modify_value(ModKeys.SPELL_CHANNEL_PROJECTILES_PER_TICK, channel_shots, channel_ctx))
 	var shots: int = maxi(1, int(round(channel_shots)))
-	
+
 	channel_fire_timer += delta
 	while channel_fire_timer >= fire_interval:
 		channel_fire_timer -= fire_interval
