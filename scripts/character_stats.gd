@@ -41,3 +41,6 @@ class_name CharacterStats
 
 ## Ranged
 @export var ranged_mode: RangedModeData
+
+## Passive — character-unique passive ability scene (extends PassiveSkill)
+@export var passive_scene: PackedScene

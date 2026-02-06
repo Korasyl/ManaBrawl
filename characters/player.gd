@@ -12,6 +12,11 @@ signal took_damage(amount: float, source: Node, ctx: Dictionary)
 @export var movement_data: MovementData
 @export var starting_attunement: Attunement
 var attunements: AttunementManager
+var status_effects: StatusEffectManager
+var _passive: PassiveSkill = null
+
+## Team identity (0 = player team for demo)
+var team_id: int = 0
 
 ## Wall detection raycasts
 @onready var wall_check_left: RayCast2D = $WallCheckLeft
@@ -69,7 +74,6 @@ var attack_timer: float = 0.0
 var is_heavy_attack: bool = false
 var heavy_charge_timer: float = 0.0
 var is_charging_heavy: bool = false  # True while holding LMB for heavy
-var combo_window: bool = false
 var combo_count: int = 0
 var hit_bodies_this_attack: Array = []
 var combo_window_timer: float = 0.0
@@ -90,6 +94,12 @@ var _default_ranged_mode: RangedModeData = preload("res://resources/ranged_modes
 var spell_cooldowns: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var queued_spell_index: int = -1  # Which spell is being aimed (-1 = none)
 var active_toggles: Array[bool] = [false, false, false, false]
+
+## Placement mode state (for "placement" cast type spells)
+var is_placing: bool = false
+var placement_position: Vector2 = Vector2.ZERO
+var placement_rotation: float = 0.0
+var placement_locked: bool = false  # True while holding LMB to rotate
 
 ## Physics
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
@@ -124,11 +134,19 @@ func _ready():
 	# Find and connect to debug HUD
 	await get_tree().process_frame
 	
+	# --- Status effects init ---
+	status_effects = StatusEffectManager.new()
+	add_child(status_effects)
+	status_effects.initialize(self)
+
 	# --- Attunements init ---
 	attunements = AttunementManager.new()
 	add_child(attunements)
 	attunements.initialize(self)
 	attunements.set_slot_attunement(0, starting_attunement)
+
+	# --- Passive skill init ---
+	_load_passive()
 	
 	# Try multiple methods to find HUD
 	debug_hud = get_tree().get_first_node_in_group("debug_hud")
@@ -230,11 +248,14 @@ func _physics_process(delta):
 		can_double_jump = true
 		wall_jump_lock_timer = 0.0
 
-	# --- Stunned: no actions, just slide to a stop ---
+	# --- Stunned or CC'd: no actions, just slide to a stop ---
 	var is_stunned := is_flinched or is_staggered
-	if is_stunned:
+	var is_cc := status_effects.is_grabbed() if status_effects else false
+	if is_stunned or is_cc:
 		if is_on_floor():
 			velocity.x = lerp(velocity.x, 0.0, 0.15)
+		if is_cc:
+			velocity = Vector2.ZERO
 		move_and_slide()
 		update_hud()
 		update_facing_direction()
@@ -253,7 +274,12 @@ func _physics_process(delta):
 
 	handle_ranged_mode()
 	handle_spell_input()
+	handle_placement_mode()
 	handle_attack_input()
+
+	# Tick passive skill
+	if _passive:
+		_passive._passive_process(delta)
 
 	# Movement: not while dashing, wall jump locked, coalescing, recovering, attacking, or blocking
 	if not is_dashing and wall_jump_lock_timer <= 0 and not is_coalescing and coalescence_recovery_timer <= 0 and not is_attacking:
@@ -316,6 +342,10 @@ func handle_movement(delta):
 	# Apply attunement move speed multiplier
 	if attunements:
 		target_speed *= attunements.get_move_speed_mult()
+
+	# Apply status effect speed modifiers
+	if status_effects:
+		target_speed *= status_effects.get_speed_mult()
 
 	# Apply horizontal movement
 	velocity.x = input_dir * target_speed
@@ -405,8 +435,15 @@ func update_hud():
 		state = "Recovery (%.1fs)" % coalescence_recovery_timer
 	elif coalescence_spell_lockout > 0:
 		state = "Spell Locked (%.1fs)" % coalescence_spell_lockout
+	elif status_effects and status_effects.is_grabbed():
+		state = "GRABBED"
+	elif status_effects and status_effects.is_rooted():
+		state = "ROOTED"
 	elif is_dashing:
 		state = "DASHING"
+	elif is_placing and queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
+		var pstate := "rotating" if placement_locked else "positioning"
+		state = "Placing: %s (%s)" % [spell_slots[queued_spell_index].spell_name, pstate]
 	elif queued_spell_index >= 0 and queued_spell_index < spell_slots.size() and spell_slots[queued_spell_index] != null:
 		state = "Spell Queued: %s" % spell_slots[queued_spell_index].spell_name
 	elif is_in_ranged_mode:
@@ -451,7 +488,7 @@ func handle_dash():
 
 		dash_direction = Vector2(input_dir, 0).normalized()
 
-		var ctx := {"dir": dash_direction, "airborne": not is_on_floor(), "mana_spent": spent}
+		var ctx := {ContextKeys.DASH_DIRECTION: dash_direction, ContextKeys.DASH_AIRBORNE: not is_on_floor(), ContextKeys.MANA_SPENT: spent}
 		emit_signal("action_started", "dash", ctx)
 		if attunements:
 			attunements.notify_action_started("dash", ctx)
@@ -902,6 +939,15 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	is_in_ranged_mode = false
 	ranged_cooldown_timer = 0.0
 	queued_spell_index = -1
+	is_placing = false
+	placement_locked = false
+
+	# Reload passive for new character
+	_load_passive()
+
+	# Clear status effects
+	if status_effects:
+		status_effects.clear_all()
 
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
@@ -922,6 +968,16 @@ func get_attunement_slot(slot_index: int) -> Attunement:
 	if attunements == null:
 		return null
 	return attunements.get_slot_attunement(slot_index)
+
+func is_ally(other: Node) -> bool:
+	if "team_id" in other:
+		return other.team_id == team_id
+	return false
+
+func is_enemy(other: Node) -> bool:
+	if "team_id" in other:
+		return other.team_id != team_id
+	return other != self
 
 func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, interrupt_type: String = "none", ctx: Dictionary = {}):
 	print("PLAYER: take_damage called! damage=%.1f, knockback=%s, type=%s" % [damage, knockback_velocity, interrupt_type])
@@ -1072,8 +1128,12 @@ func die():
 	is_in_ranged_mode = false
 	queued_spell_index = -1
 	active_toggles = [false, false, false, false]
+	is_placing = false
+	placement_locked = false
 	stun_timer = 0.0
 	melee_collision.disabled = true
+	if status_effects:
+		status_effects.clear_all()
 	
 	# Visual feedback
 	if animated_sprite:
@@ -1102,6 +1162,10 @@ func respawn():
 	queued_spell_index = -1
 	spell_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	active_toggles = [false, false, false, false]
+	is_placing = false
+	placement_locked = false
+	if status_effects:
+		status_effects.clear_all()
 
 	# Visual feedback
 	if animated_sprite:
@@ -1150,8 +1214,10 @@ func fire_projectile(mode: RangedModeData):
 	proj.direction = aim_direction
 	proj.speed = mode.projectile_speed
 	proj.damage = mode.damage
+	proj.damage_type = mode.damage_type
 	proj.interrupt_type = mode.interrupt_type
 	proj.source = self
+	proj.team_id = team_id
 	get_tree().current_scene.add_child(proj)
 	# Apply projectile color
 	if proj.has_node("ColorRect"):
@@ -1165,6 +1231,8 @@ func fire_projectile(mode: RangedModeData):
 
 func handle_spell_input():
 	if is_coalescing or is_dashing or coalescence_spell_lockout > 0:
+		return
+	if status_effects and status_effects.is_silenced():
 		return
 
 	# Check spell keys 1-4
@@ -1186,12 +1254,15 @@ func _on_spell_key_pressed(index: int):
 	if spell.cast_type == "toggled":
 		_toggle_spell(index)
 	else:
-		# Targeted or free_aim: queue/cancel
+		# Targeted, free_aim, or placement: queue/cancel
 		if queued_spell_index == index:
-			# Cancel queue
-			queued_spell_index = -1
-			if debug_hud:
-				debug_hud.log_action("[color=gray]Spell cancelled[/color]")
+			# Cancel queue (also cancels placement mode)
+			if is_placing:
+				_cancel_placement()
+			else:
+				queued_spell_index = -1
+				if debug_hud:
+					debug_hud.log_action("[color=gray]Spell cancelled[/color]")
 		else:
 			if spell_cooldowns[index] > 0:
 				if debug_hud:
@@ -1202,8 +1273,16 @@ func _on_spell_key_pressed(index: int):
 					debug_hud.log_action("[color=red]Not enough mana[/color]")
 				return
 			queued_spell_index = index
-			if debug_hud:
-				debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name)
+			# Enter placement mode for placement spells
+			if spell.cast_type == "placement":
+				is_placing = true
+				placement_locked = false
+				placement_position = get_global_mouse_position()
+				if debug_hud:
+					debug_hud.log_action("[color=violet]Placing: %s (click to position)[/color]" % spell.spell_name)
+			else:
+				if debug_hud:
+					debug_hud.log_action("[color=violet]Queued: %s (LMB to cast)[/color]" % spell.spell_name)
 
 func _toggle_spell(index: int):
 	var spell := spell_slots[index]
@@ -1233,6 +1312,10 @@ func cast_spell(index: int):
 
 	var spell := spell_slots[index]
 
+	# Placement spells are handled by handle_placement_mode(), not here
+	if spell.cast_type == "placement":
+		return
+
 	# For targeted spells, find target first (don't consume mana if no target)
 	var target_body: Node = null
 	if spell.cast_type == "targeted":
@@ -1261,30 +1344,80 @@ func cast_spell(index: int):
 
 func _fire_spell_projectile(spell: SpellData):
 	var dir := (get_global_mouse_position() - global_position).normalized()
+
+	# If spell has a custom scene, spawn it directly (it handles its own behavior)
+	if spell.spell_scene:
+		_spawn_spell_scene(spell, global_position + dir * 40, dir)
+		return
+
+	# Default: fire a projectile
 	var proj = projectile_scene.instantiate()
 	proj.global_position = global_position + dir * 40
 	proj.direction = dir
 	proj.speed = spell.projectile_speed
 	proj.damage = spell.damage
+	proj.damage_type = "spell"
 	proj.interrupt_type = spell.interrupt_type
 	proj.source = self
+	proj.team_id = team_id
+	proj.spell_data = spell
 	get_tree().current_scene.add_child(proj)
-	# Tint spell projectile
 	if proj.has_node("ColorRect"):
 		proj.get_node("ColorRect").color = spell.projectile_color
 
 func _fire_targeted_projectile(spell: SpellData, target: Node):
 	var dir := (target.global_position - global_position).normalized()
+
+	if spell.spell_scene:
+		_spawn_spell_scene(spell, global_position + dir * 40, dir, target)
+		return
+
 	var proj = projectile_scene.instantiate()
 	proj.global_position = global_position + dir * 40
 	proj.direction = dir
 	proj.speed = spell.projectile_speed
 	proj.damage = spell.damage
+	proj.damage_type = "spell"
 	proj.interrupt_type = spell.interrupt_type
 	proj.source = self
+	proj.team_id = team_id
+	proj.spell_data = spell
 	get_tree().current_scene.add_child(proj)
 	if proj.has_node("ColorRect"):
 		proj.get_node("ColorRect").color = spell.projectile_color
+
+## Spawn a spell's custom scene, passing it context for initialization.
+func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.RIGHT, target: Node = null):
+	var entity = spell.spell_scene.instantiate()
+	entity.global_position = pos
+
+	# Set common fields if the scene supports them
+	if "caster" in entity:
+		entity.caster = self
+	if "team_id" in entity:
+		entity.team_id = team_id
+	if "spell_data" in entity:
+		entity.spell_data = spell
+	# For projectile-type spell scenes
+	if "direction" in entity:
+		entity.direction = dir
+	if "source" in entity:
+		entity.source = self
+
+	# Call initialize() with full context if available
+	if entity.has_method("initialize"):
+		var ctx := {
+			ContextKeys.SOURCE: self,
+			ContextKeys.CAST_DIRECTION: dir,
+			ContextKeys.CAST_POSITION: pos,
+			ContextKeys.TEAM_ID: team_id,
+			ContextKeys.SPELL_DATA: spell,
+		}
+		if target:
+			ctx[ContextKeys.CAST_TARGET] = target
+		entity.initialize(ctx)
+
+	get_tree().current_scene.add_child(entity)
 
 func _find_target_near_cursor() -> Node:
 	var mouse_pos := get_global_mouse_position()
@@ -1307,9 +1440,120 @@ func _find_target_near_cursor() -> Node:
 
 	return nearest
 
+# ---- Placement Mode ----
+
+func handle_placement_mode():
+	if not is_placing:
+		return
+
+	if queued_spell_index < 0 or queued_spell_index >= spell_slots.size():
+		is_placing = false
+		return
+
+	var spell := spell_slots[queued_spell_index]
+	if spell == null or spell.cast_type != "placement":
+		is_placing = false
+		return
+
+	if not placement_locked:
+		# Phase 1: cursor sets position
+		placement_position = get_global_mouse_position()
+
+		if Input.is_action_just_pressed("light_attack"):
+			# Lock position, enter rotation phase
+			placement_locked = true
+			placement_rotation = 0.0
+	else:
+		# Phase 2: holding LMB — drag to rotate
+		var delta_to_mouse := get_global_mouse_position() - placement_position
+		placement_rotation = delta_to_mouse.angle()
+
+		if Input.is_action_just_released("light_attack"):
+			# Confirm placement — spend mana and spawn
+			var spent := use_mana(spell.mana_cost, "spell_cast")
+			if spent <= 0:
+				# Not enough mana — cancel
+				is_placing = false
+				placement_locked = false
+				queued_spell_index = -1
+				return
+
+			spell_cooldowns[queued_spell_index] = spell.cooldown
+
+			# Spawn the spell entity at the placement location
+			if spell.spell_scene:
+				var entity = spell.spell_scene.instantiate()
+				entity.global_position = placement_position
+				entity.rotation = placement_rotation
+				if "caster" in entity:
+					entity.caster = self
+				if "team_id" in entity:
+					entity.team_id = team_id
+				if "spell_data" in entity:
+					entity.spell_data = spell
+				if entity.has_method("initialize"):
+					entity.initialize({
+						ContextKeys.SOURCE: self,
+						ContextKeys.CAST_POSITION: placement_position,
+						ContextKeys.CAST_ROTATION: placement_rotation,
+						ContextKeys.TEAM_ID: team_id,
+						ContextKeys.SPELL_DATA: spell,
+					})
+				get_tree().current_scene.add_child(entity)
+
+			if debug_hud:
+				debug_hud.log_action("[color=violet]Placed: %s[/color]" % spell.spell_name, -spent)
+
+			# Clean up placement state
+			is_placing = false
+			placement_locked = false
+			queued_spell_index = -1
+
+	# Cancel with Q or pressing the same spell key
+	if Input.is_action_just_pressed("cancel_cast"):
+		_cancel_placement()
+
+	queue_redraw()
+
+func _cancel_placement():
+	is_placing = false
+	placement_locked = false
+	queued_spell_index = -1
+	if debug_hud:
+		debug_hud.log_action("[color=gray]Placement cancelled[/color]")
+
+# ---- Passive Skill ----
+
+func _load_passive():
+	# Remove existing passive if any
+	if _passive:
+		_passive.queue_free()
+		_passive = null
+
+	if stats and stats.passive_scene:
+		var instance = stats.passive_scene.instantiate()
+		if instance is PassiveSkill:
+			_passive = instance
+			add_child(_passive)
+			_passive.initialize(self)
+
 # ---- Draw (aim line) ----
 
 func _draw():
+	# Placement mode preview
+	if is_placing:
+		var local_pos := placement_position - global_position
+		if not placement_locked:
+			# Show crosshair at cursor
+			draw_circle(local_pos, 8.0, Color(0.3, 1.0, 0.6, 0.6))
+			draw_arc(local_pos, 12.0, 0, TAU, 16, Color(0.3, 1.0, 0.6, 0.3), 2.0)
+		else:
+			# Show locked position + rotation indicator
+			draw_circle(local_pos, 6.0, Color(1.0, 0.8, 0.2, 0.8))
+			var rot_end := local_pos + Vector2.from_angle(placement_rotation) * 40
+			draw_line(local_pos, rot_end, Color(1.0, 0.8, 0.2, 0.8), 2.0)
+		return
+
 	if is_in_ranged_mode or queued_spell_index >= 0:
 		var dir := (get_global_mouse_position() - global_position).normalized()
 		var aim_end := dir * 120
