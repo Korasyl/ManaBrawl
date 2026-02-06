@@ -32,3 +32,17 @@ const COMBO_COUNT := "combo_count"
 # Block/shield (Phase 2 — reserved so attunements can hook in)
 const IS_BLOCKED := "is_blocked"
 const IS_SHIELD_BREAK := "is_shield_break"
+
+# Dash (Phase 2)
+const DASH_DIRECTION := "dash_direction"
+const DASH_AIRBORNE := "dash_airborne"
+
+# Spell casting (Phase 3)
+const SPELL_DATA := "spell_data"
+const CAST_DIRECTION := "cast_direction"
+const CAST_POSITION := "cast_position"
+const CAST_TARGET := "cast_target"
+const CAST_ROTATION := "cast_rotation"
+
+# Team (Phase 4)
+const TEAM_ID := "team_id"

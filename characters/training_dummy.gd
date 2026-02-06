@@ -18,6 +18,9 @@ var original_color: Color
 var hit_flash_timer: float = 0.0
 var spawn_position: Vector2
 
+## Team identity (1 = enemy team for demo)
+var team_id: int = 1
+
 # Stun/Interrupt
 var is_flinched: bool = false
 var is_staggered: bool = false
@@ -438,6 +441,16 @@ func _apply_attack_overlap_hits() -> void:
 	var bodies := attack_hitbox.get_overlapping_bodies()
 	for b in bodies:
 		_on_attack_hit(b)
+
+func is_ally(other: Node) -> bool:
+	if "team_id" in other:
+		return other.team_id == team_id
+	return false
+
+func is_enemy(other: Node) -> bool:
+	if "team_id" in other:
+		return other.team_id != team_id
+	return other != self
 
 func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, interrupt_type: String = "none", ctx: Dictionary = {}):
 	if is_dead:
