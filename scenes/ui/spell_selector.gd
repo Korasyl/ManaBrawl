@@ -291,12 +291,20 @@ func _build_tooltip_text(spell: SpellData) -> String:
 		type_label += " (%s)" % spell.targeted_delivery.replace("_", " ")
 	lines.append("[color=%s]%s[/color]" % [type_color, type_label])
 
-	if spell.can_target_allies:
-		lines.append("[color=green]Can target allies[/color]")
+	# Targeting restrictions
+	if spell.can_target_allies and spell.can_target_enemies:
+		lines.append("[color=green]Targets: allies & enemies[/color]")
+	elif spell.can_target_allies and not spell.can_target_enemies:
+		lines.append("[color=green]Targets: allies only[/color]")
+	elif not spell.can_target_allies and spell.can_target_enemies:
+		pass  # Default — enemies only, no need to call it out
 
 	# Core stats
 	lines.append("[color=dodgerblue]Mana:[/color] %.0f" % spell.mana_cost)
 	lines.append("[color=goldenrod]Cooldown:[/color] %.1fs" % spell.cooldown)
+
+	if spell.heal_amount > 0:
+		lines.append("[color=green]Heal:[/color] %.0f" % spell.heal_amount)
 
 	if spell.damage > 0:
 		lines.append("[color=red]Damage:[/color] %.0f" % spell.damage)

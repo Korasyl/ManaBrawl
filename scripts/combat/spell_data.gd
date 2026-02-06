@@ -23,6 +23,10 @@ class_name SpellData
 @export_enum("projectile", "apply_at_target") var targeted_delivery: String = "projectile"
 @export var targeted_homing_turn_speed: float = 8.0  # radians per second
 @export var can_target_allies: bool = false
+@export var can_target_enemies: bool = true
+
+## Heal amount (for ally-targeted spells; 0 = not a heal)
+@export var heal_amount: float = 0.0
 
 ## Channeled casting
 @export var is_channeled: bool = false
