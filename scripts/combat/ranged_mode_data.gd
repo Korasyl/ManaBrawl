@@ -16,3 +16,19 @@ class_name RangedModeData
 ## Mode behavior
 @export var fire_cooldown: float = 0.4
 @export var move_speed_mult: float = 0.7  # Movement speed while in ranged mode
+
+
+## Targeted delivery options (used when mode_type == "targeted")
+@export var targeted_max_range_from_cursor: float = 220.0
+@export var targeted_allow_self: bool = true
+@export var targeted_affect_allies: bool = true
+@export var targeted_affect_enemies: bool = true
+
+## Cauterizing Fire-style effects
+@export var targeted_burst_damage: float = 0.0
+@export var targeted_burst_heal: float = 0.0
+@export var targeted_dot_duration: float = 0.0
+@export var targeted_dot_damage_per_second: float = 0.0
+@export var targeted_hot_duration: float = 0.0
+@export var targeted_hot_heal_per_second: float = 0.0
+@export var targeted_effect_id: String = ""

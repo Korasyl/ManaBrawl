@@ -24,12 +24,18 @@ func _physics_process(delta):
 				expired.append(effect)
 				continue
 
-		# Apply DoT
+		# Apply DoT / HoT
 		if effect.type == StatusEffect.Type.BURNING and _owner != null:
 			if _owner.has_method("take_damage"):
 				var dot_damage: float = float(effect.magnitude) * float(delta)
 				var ctx := {ContextKeys.SOURCE: effect.source, ContextKeys.DAMAGE_TYPE: "dot"}
 				_owner.take_damage(dot_damage, Vector2.ZERO, "none", ctx)
+
+		if effect.type == StatusEffect.Type.HEALING and _owner != null:
+			if _owner.has_method("apply_healing"):
+				var hot_heal: float = float(effect.magnitude) * float(delta)
+				_owner.apply_healing(hot_heal, {ContextKeys.SOURCE: effect.source, ContextKeys.DAMAGE_TYPE: "hot"})
+
 
 	# Remove expired effects
 	for effect in expired:

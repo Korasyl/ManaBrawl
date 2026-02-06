@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharacterStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/character_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/ranged_modes/cauterizing_fire.tres" id="2_rng"]
+
+[resource]
+script = ExtResource("1_stats")
+character_name = "Fervor"
+ranged_mode = ExtResource("2_rng")

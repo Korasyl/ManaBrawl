@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="RangedModeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/ranged_mode_data.gd" id="1_rmd"]
+
+[resource]
+script = ExtResource("1_rmd")
+mode_name = "Cauterizing Fire"
+mode_type = "targeted"
+damage = 0.0
+damage_type = "ranged"
+interrupt_type = "flinch"
+projectile_speed = 600.0
+projectile_color = Color(1, 0.6, 0.2, 1)
+fire_cooldown = 0.55
+move_speed_mult = 0.7
+targeted_max_range_from_cursor = 260.0
+targeted_allow_self = true
+targeted_affect_allies = true
+targeted_affect_enemies = true
+targeted_burst_damage = 10.0
+targeted_burst_heal = 10.0
+targeted_dot_duration = 3.0
+targeted_dot_damage_per_second = 5.0
+targeted_hot_duration = 3.0
+targeted_hot_heal_per_second = 5.0
+targeted_effect_id = "cauterizing_fire"

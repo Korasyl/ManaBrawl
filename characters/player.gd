@@ -113,6 +113,8 @@ var placement_locked: bool = false  # True while holding LMB to rotate
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
 func _ready():
+	add_to_group("player")
+
 	# Initialize from stats
 	if stats:
 		current_health = stats.max_health
@@ -1008,6 +1010,13 @@ func is_enemy(other: Node) -> bool:
 		return other.team_id != team_id
 	return other != self
 
+func apply_healing(amount: float, _ctx: Dictionary = {}) -> void:
+	if is_dead or amount <= 0.0:
+		return
+	if stats == null:
+		return
+	current_health = min(current_health + amount, stats.max_health)
+
 func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, interrupt_type: String = "none", ctx: Dictionary = {}):
 	print("PLAYER: take_damage called! damage=%.1f, knockback=%s, type=%s" % [damage, knockback_velocity, interrupt_type])
 	if is_dead:
@@ -1267,6 +1276,69 @@ func fire_projectile(mode: RangedModeData):
 
 	if debug_hud:
 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
+
+func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true) -> Node:
+	var mouse_pos := get_global_mouse_position()
+	var nearest: Node = null
+	var nearest_dist := max_range_from_cursor
+
+	var candidates := get_tree().get_nodes_in_group("enemy")
+	candidates.append_array(get_tree().get_nodes_in_group("training_dummy"))
+	candidates.append_array(get_tree().get_nodes_in_group("player"))
+
+	for candidate in candidates:
+		if candidate == null or not is_instance_valid(candidate):
+			continue
+		if not ("team_id" in candidate):
+			continue
+		if not (candidate is Node2D):
+			continue
+		if not (candidate.has_method("take_damage") or candidate.has_method("apply_healing") or ("status_effects" in candidate)):
+			continue
+		var dist := mouse_pos.distance_to(candidate.global_position)
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest = candidate
+
+	if allow_self:
+		var self_dist := mouse_pos.distance_to(global_position)
+		if self_dist < nearest_dist:
+			nearest = self
+
+	return nearest
+
+func _fire_targeted_ranged(mode: RangedModeData) -> bool:
+	var target: Node = _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
+	if target == null:
+		return false
+
+	var is_target_ally: bool = is_ally(target)
+	if is_target_ally and not mode.targeted_affect_allies:
+		return false
+	if (not is_target_ally) and not mode.targeted_affect_enemies:
+		return false
+
+	var effect_id: String = mode.targeted_effect_id if mode.targeted_effect_id != "" else mode.mode_name.to_lower().replace(" ", "_")
+	var ctx := {
+		ContextKeys.SOURCE: self,
+		ContextKeys.TARGET: target,
+		ContextKeys.ATTACK_ID: effect_id,
+		ContextKeys.DAMAGE_TYPE: mode.damage_type,
+		ContextKeys.TEAM_ID: team_id,
+	}
+
+	if is_target_ally:
+		if mode.targeted_burst_heal > 0.0 and target.has_method("apply_healing"):
+			target.apply_healing(mode.targeted_burst_heal, ctx)
+		if mode.targeted_hot_duration > 0.0 and mode.targeted_hot_heal_per_second > 0.0 and "status_effects" in target and target.status_effects:
+			target.status_effects.apply_effect(StatusEffect.Type.HEALING, mode.targeted_hot_duration, self, mode.targeted_hot_heal_per_second, effect_id + "_hot")
+	else:
+		if mode.targeted_burst_damage > 0.0 and target.has_method("take_damage"):
+			target.take_damage(mode.targeted_burst_damage, Vector2.ZERO, mode.interrupt_type, ctx)
+		if mode.targeted_dot_duration > 0.0 and mode.targeted_dot_damage_per_second > 0.0 and "status_effects" in target and target.status_effects:
+			target.status_effects.apply_effect(StatusEffect.Type.BURNING, mode.targeted_dot_duration, self, mode.targeted_dot_damage_per_second, effect_id + "_burn")
+
+	return true
 
 func _get_projectile_spawn_base() -> Vector2:
 	return global_position + projectile_spawn_offset	

@@ -11,6 +11,7 @@ enum Type {
 	GRABBED,    # Cannot move or act (vine grab, etc.)
 	SLOWED,     # Reduced move speed
 	BURNING,    # Damage over time
+	HEALING,    # Healing over time
 	CUSTOM,     # For unique effects — check effect_id
 }
 
