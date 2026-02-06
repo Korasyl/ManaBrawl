@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Mana Blast"
+description = "Launches a heavy bolt of raw mana. High damage and stagger, but slower projectile and costly."
 mana_cost = 30.0
 cooldown = 6.0
 cast_type = "free_aim"

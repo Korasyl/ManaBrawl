@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Arcane Bolt"
+description = "Fires a fast arcane projectile in a straight line. Reliable poke with low mana cost."
 mana_cost = 15.0
 cooldown = 3.0
 cast_type = "free_aim"

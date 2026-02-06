@@ -4,4 +4,6 @@
 
 [resource]
 script = ExtResource("1_hwg6g")
+spell_name = "Test Spell"
+description = "A basic test projectile for debugging purposes."
 metadata/_custom_type_script = "uid://b6vugw0yoomsi"

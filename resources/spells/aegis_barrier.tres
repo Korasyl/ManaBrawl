@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Aegis Barrier"
+description = "Places a destructible barrier (120 HP) that blocks projectiles and movement. Rotate before confirming placement."
 mana_cost = 35.0
 cooldown = 12.0
 cast_type = "placement"

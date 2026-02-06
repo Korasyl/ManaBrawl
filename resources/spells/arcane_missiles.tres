@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Arcane Missiles"
+description = "Channeled: rapidly fires homing missiles at the target. Drains mana while held. Low per-hit damage but high volume."
 mana_cost = 0.0
 cooldown = 2.5
 cast_type = "targeted"

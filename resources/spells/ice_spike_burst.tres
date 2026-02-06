@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Ice Spike Burst"
+description = "Erupts ice spikes at the target's location after a brief warmup. Staggers enemies caught in the burst."
 mana_cost = 24.0
 cooldown = 7.0
 cast_type = "targeted"

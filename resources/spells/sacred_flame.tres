@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Sacred Flame"
+description = "Calls down a holy flame strike directly on the target. Deals high damage and flinches on hit."
 mana_cost = 18.0
 cooldown = 5.0
 cast_type = "targeted"

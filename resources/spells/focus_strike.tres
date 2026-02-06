@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_spell")
 spell_name = "Focus Strike"
+description = "Fires a homing projectile that tracks the target. Strong turn speed makes it hard to dodge."
 cooldown = 4.0
 cast_type = "targeted"
 damage = 25.0

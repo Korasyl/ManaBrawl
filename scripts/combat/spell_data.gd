@@ -2,6 +2,7 @@ extends Resource
 class_name SpellData
 
 @export var spell_name: String = ""
+@export_multiline var description: String = ""
 @export var mana_cost: float = 20.0
 @export var cooldown: float = 5.0
 @export_enum("targeted", "free_aim", "toggled", "placement") var cast_type: String = "free_aim"
