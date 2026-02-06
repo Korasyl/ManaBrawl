@@ -38,8 +38,17 @@ func _on_body_entered(body):
 	if body == source:
 		return
 
-	# Hit walls — spawn impact entity if any, then destroy
+
+	# Hit walls/destructibles — spawn impact entity if any, then destroy
 	if body is StaticBody2D:
+		if body.has_method("take_damage"):
+			var ctx := {
+				ContextKeys.SOURCE: source,
+				ContextKeys.ATTACK_ID: "ranged_basic" if spell_data == null else spell_data.spell_name,
+				ContextKeys.DAMAGE_TYPE: damage_type,
+				ContextKeys.TEAM_ID: team_id,
+			}
+			body.take_damage(damage, Vector2.ZERO, "none", ctx)
 		_spawn_impact_entity(global_position)
 		queue_free()
 		return

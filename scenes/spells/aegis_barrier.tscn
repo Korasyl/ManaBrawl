@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/spells/aegis_barrier.gd" id="1_barrier"]
+[ext_resource type="Script" path="res://scripts/spells/barrier_body.gd" id="2_body"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barrier"]
+size = Vector2(220, 18)
+
+[node name="AegisBarrier" type="Node2D"]
+script = ExtResource("1_barrier")
+max_lifetime = 8.0
+max_hp = 120.0
+
+[node name="BarrierBody" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("2_body")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="BarrierBody"]
+shape = SubResource("RectangleShape2D_barrier")
+
+[node name="ColorRect" type="ColorRect" parent="BarrierBody"]
+offset_left = -110.0
+offset_top = -9.0
+offset_right = 110.0
+offset_bottom = 9.0
+color = Color(0.35, 0.75, 1, 0.55)
