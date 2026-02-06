@@ -11,6 +11,17 @@ class_name Attunement
 @export var damage_mult: float = 1.0
 @export var move_speed_mult: float = 1.0
 
+# Spell behavior overrides (optional)
+@export var spell_damage_mult: float = 1.0
+@export var spell_projectile_speed_mult: float = 1.0
+@export var spell_homing_turn_speed_mult: float = 1.0
+@export var spell_channel_drain_mult: float = 1.0
+@export var spell_channel_interval_mult: float = 1.0
+@export var spell_channel_projectiles_mult: float = 1.0
+@export_enum("unchanged", "projectile", "apply_at_target") var forced_targeted_delivery: String = "unchanged"
+@export_enum("unchanged", "false", "true") var forced_channeled: String = "unchanged"
+
+
 # Per-action overrides (optional, scalable, future-proof)
 # Example keys: "dash", "double_jump", "wall_jump", "wall_cling", "light_attack", "heavy_attack", "coalesce"
 # Values are multipliers.
@@ -24,16 +35,44 @@ func get_value_mult(action_id: String) -> float:
 	return float(action_value_mults.get(action_id, 1.0))
 
 func modify_value(_player: Node, _key: String, value: float, _ctx: Dictionary) -> float:
-	# Base implementation: pass-through. Static multipliers (damage_mult, mana_gain_mult,
-	# action_value_mults) are already applied by AttunementManager before this is called.
-	# Override in subclasses for context-aware conditional modifiers.
-	return value
+	# Base implementation applies generic spell tuning multipliers.
+	# Subclasses can still override for context-aware behavior.
+	var out := value
+	match _key:
+		ModKeys.SPELL_DAMAGE:
+			out *= spell_damage_mult
+		ModKeys.SPELL_PROJECTILE_SPEED:
+			out *= spell_projectile_speed_mult
+		ModKeys.SPELL_HOMING_TURN_SPEED:
+			out *= spell_homing_turn_speed_mult
+		ModKeys.SPELL_CHANNEL_DRAIN:
+			out *= spell_channel_drain_mult
+		ModKeys.SPELL_CHANNEL_INTERVAL:
+			out *= spell_channel_interval_mult
+		ModKeys.SPELL_CHANNEL_PROJECTILES_PER_TICK:
+			out *= spell_channel_projectiles_mult
+	return out
 
 ## Ranged mode override — subclasses return a RangedModeData to replace the character's
 ## default ranged mode entirely (e.g. Bolt's attunement swapping free-aim to targeted).
 ## Return null to keep the character's default.
 func get_ranged_mode_override() -> RangedModeData:
 	return null
+
+## Optional override for targeted spell delivery behavior.
+## Return the input unchanged to keep the spell default.
+func override_targeted_delivery(_player: Node, base_delivery: String, _ctx: Dictionary = {}) -> String:
+	if forced_targeted_delivery == "unchanged":
+		return base_delivery
+	return forced_targeted_delivery
+
+## Optional override for channeled behavior.
+## Return the input unchanged to keep the spell default.
+func override_spell_channeled(_player: Node, base_channeled: bool, _ctx: Dictionary = {}) -> bool:
+	if forced_channeled == "unchanged":
+		return base_channeled
+	return forced_channeled == "true"
+
 
 # --- Event hooks (optional) ---
 # These are intentionally generic. You can subclass Attunement later for special behavior.

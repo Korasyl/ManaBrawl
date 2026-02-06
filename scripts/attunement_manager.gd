@@ -117,6 +117,17 @@ func modify_mana_gain(value_key: String, base_value: float, ctx: Dictionary = {}
 
 	return result
 
+## Generic value modification pipeline for arbitrary keys.
+## Applies per-attunement context-aware hooks in slot order.
+func modify_value(value_key: String, base_value: float, ctx: Dictionary = {}) -> float:
+	var result: float = float(base_value)
+	for a in _slots:
+		if a == null:
+			continue
+		result = a.modify_value(_player, value_key, result, ctx)
+	return result
+
+
 ## Returns the first non-null ranged mode override from equipped attunements.
 ## Falls back to null (caller should then use stats.ranged_mode).
 func get_ranged_mode_override() -> RangedModeData:
@@ -168,3 +179,22 @@ func get_debug_summary_text(stats: CharacterStats) -> String:
 		float(s["dash_cost_mult"]), float(s["double_jump_cost_mult"]), float(s["wall_jump_cost_mult"]), float(s["wall_cling_cost_mult"]),
 		dash_base, dash_eff, dj_base, dj_eff, wj_base, wj_eff, cling_base, cling_eff
 	]
+
+## Resolve targeted delivery through equipped attunements.
+## Attunements may force projectile/apply_at_target behavior.
+func get_spell_targeted_delivery(base_delivery: String, ctx: Dictionary = {}) -> String:
+	var resolved: String = base_delivery
+	for a in _slots:
+		if a == null:
+			continue
+		resolved = a.override_targeted_delivery(_player, resolved, ctx)
+	return resolved
+
+## Resolve whether a spell should be treated as channeled.
+func get_spell_channeled(base_channeled: bool, ctx: Dictionary = {}) -> bool:
+	var resolved: bool = base_channeled
+	for a in _slots:
+		if a == null:
+			continue
+		resolved = a.override_spell_channeled(_player, resolved, ctx)
+	return resolved

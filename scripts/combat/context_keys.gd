@@ -43,6 +43,13 @@ const CAST_DIRECTION := "cast_direction"
 const CAST_POSITION := "cast_position"
 const CAST_TARGET := "cast_target"
 const CAST_ROTATION := "cast_rotation"
+const TARGETED_DELIVERY := "targeted_delivery"
+const PROJECTILE_SPEED := "projectile_speed"
+const HOMING_TURN_SPEED := "homing_turn_speed"
+const IS_CHANNELED := "is_channeled"
+const CHANNEL_DRAIN := "channel_drain"
+const CHANNEL_INTERVAL := "channel_interval"
+const CHANNEL_PROJECTILES_PER_TICK := "channel_projectiles_per_tick"
 
 # Team (Phase 4)
 const TEAM_ID := "team_id"

@@ -1272,6 +1272,25 @@ func _get_projectile_spawn_base() -> Vector2:
 	return global_position + projectile_spawn_offset	
 
 # ---- Spell System ----
+func _is_spell_channeled(spell: SpellData) -> bool:
+	if spell == null:
+		return false
+	var base_value: bool = spell.is_channeled
+	if attunements and attunements.has_method("get_spell_channeled"):
+		return bool(attunements.get_spell_channeled(base_value, {ContextKeys.SPELL_DATA: spell}))
+	return base_value
+
+func _get_spell_targeted_delivery(spell: SpellData, target: Node = null) -> String:
+	if spell == null:
+		return "projectile"
+	var base_value: String = spell.targeted_delivery
+	if attunements and attunements.has_method("get_spell_targeted_delivery"):
+		var ctx := {ContextKeys.SPELL_DATA: spell}
+		if target != null:
+			ctx[ContextKeys.TARGET] = target
+		return String(attunements.get_spell_targeted_delivery(base_value, ctx))
+	return base_value
+
 
 func handle_spell_input():
 	if is_coalescing or is_dashing or coalescence_spell_lockout > 0:
@@ -1288,7 +1307,7 @@ func handle_spell_input():
 	# If a spell is queued and LMB pressed, cast it (unless channeled)
 	if queued_spell_index >= 0 and queued_spell_index < spell_slots.size() and spell_slots[queued_spell_index] != null:
 		var queued_spell: SpellData = spell_slots[queued_spell_index]
-		if queued_spell.is_channeled:
+		if _is_spell_channeled(queued_spell):
 			if Input.is_action_just_pressed("light_attack"):
 				_start_channeled_spell(queued_spell_index)
 		elif Input.is_action_just_pressed("light_attack"):
@@ -1321,7 +1340,7 @@ func _on_spell_key_pressed(index: int):
 		_clear_spell_queue(true, true)
 
 	var spent: float = 0.0
-	if not spell.is_channeled:
+	if not _is_spell_channeled(spell):
 		# Non-channeled spells pay on queue so cast cannot fail from mana later.
 		spent = use_mana(spell.mana_cost, "spell_cast")
 		if spent <= 0.0:
@@ -1368,7 +1387,7 @@ func _start_channeled_spell(index: int) -> void:
 	if index < 0 or index >= spell_slots.size() or spell_slots[index] == null:
 		return
 	var spell: SpellData = spell_slots[index]
-	if not spell.is_channeled:
+	if not _is_spell_channeled(spell):
 		return
 
 	is_channeling_spell = true
@@ -1387,7 +1406,7 @@ func handle_channeled_spell(delta: float) -> void:
 		return
 
 	var spell: SpellData = spell_slots[channel_spell_index]
-	if not spell.is_channeled:
+	if not _is_spell_channeled(spell):
 		_clear_spell_queue(false, true)
 		return
 
@@ -1403,7 +1422,16 @@ func handle_channeled_spell(delta: float) -> void:
 		_clear_spell_queue(false, true)
 		return
 
-	var spent: float = use_mana(spell.channel_mana_drain_per_second * delta, "spell_channel")
+	var channel_ctx := {
+		ContextKeys.SPELL_DATA: spell,
+		ContextKeys.IS_CHANNELED: true,
+		ContextKeys.CHANNEL_DRAIN: spell.channel_mana_drain_per_second,
+	}
+	var drain_per_second: float = spell.channel_mana_drain_per_second
+	if attunements:
+		drain_per_second = float(attunements.modify_value(ModKeys.SPELL_CHANNEL_DRAIN, drain_per_second, channel_ctx))
+	drain_per_second = maxf(0.0, drain_per_second)
+	var spent: float = use_mana(drain_per_second * delta, "spell_channel", channel_ctx)
 	if spent <= 0.0:
 		if debug_hud:
 			debug_hud.log_action("[color=red]Channel ended (no mana)[/color]")
@@ -1411,11 +1439,19 @@ func handle_channeled_spell(delta: float) -> void:
 		_clear_spell_queue(false, true)
 		return
 
-	var fire_interval: float = maxf(0.03, spell.channel_fire_interval)
+	var channel_interval: float = spell.channel_fire_interval
+	if attunements:
+		channel_interval = float(attunements.modify_value(ModKeys.SPELL_CHANNEL_INTERVAL, channel_interval, channel_ctx))
+	var fire_interval: float = maxf(0.03, channel_interval)
+
+	var channel_shots: float = float(spell.channel_projectiles_per_tick)
+	if attunements:
+		channel_shots = float(attunements.modify_value(ModKeys.SPELL_CHANNEL_PROJECTILES_PER_TICK, channel_shots, channel_ctx))
+	var shots: int = maxi(1, int(round(channel_shots)))
+	
 	channel_fire_timer += delta
 	while channel_fire_timer >= fire_interval:
 		channel_fire_timer -= fire_interval
-		var shots: int = maxi(1, spell.channel_projectiles_per_tick)
 		for i in range(shots):
 			_fire_channeled_tick(spell)
 
@@ -1454,7 +1490,7 @@ func cast_spell(index: int):
 	var spell := spell_slots[index]
 
 	# Placement and channeled spells are handled elsewhere.
-	if spell.cast_type == "placement" or spell.is_channeled:
+	if spell.cast_type == "placement" or _is_spell_channeled(spell):
 		return
 
 	# For targeted spells, require a valid target before resolving cast
@@ -1480,18 +1516,36 @@ func cast_spell(index: int):
 
 func _fire_spell_projectile(spell: SpellData):
 	var dir := (get_global_mouse_position() - global_position).normalized()
-
+	var spell_ctx := {
+		ContextKeys.SOURCE: self,
+		ContextKeys.SPELL_DATA: spell,
+		ContextKeys.ATTACK_ID: spell.spell_name,
+		ContextKeys.DAMAGE_TYPE: "spell",
+		ContextKeys.CAST_DIRECTION: dir,
+		ContextKeys.TEAM_ID: team_id,
+		ContextKeys.IS_CHANNELED: false,
+		ContextKeys.TARGETED_DELIVERY: _get_spell_targeted_delivery(spell),
+	}
+	var final_speed: float = spell.projectile_speed
+	var final_damage: float = spell.damage
+	if attunements:
+		final_speed = float(attunements.modify_value(ModKeys.SPELL_PROJECTILE_SPEED, final_speed, spell_ctx))
+		final_damage = float(attunements.modify_value(ModKeys.SPELL_DAMAGE, final_damage, spell_ctx))
+	final_speed = maxf(0.0, final_speed)
+	
 	# If spell has a custom scene, spawn it directly (it handles its own behavior)
 	if spell.spell_scene:
-		_spawn_spell_scene(spell, _get_projectile_spawn_base() + dir * 40, dir)
+		spell_ctx[ContextKeys.PROJECTILE_SPEED] = final_speed
+		spell_ctx[ContextKeys.DAMAGE] = final_damage
+		_spawn_spell_scene(spell, _get_projectile_spawn_base() + dir * 40, dir, null, spell_ctx)
 		return
 
 	# Default: fire a projectile
 	var proj = projectile_scene.instantiate()
 	proj.global_position = _get_projectile_spawn_base() + dir * 40
 	proj.direction = dir
-	proj.speed = spell.projectile_speed
-	proj.damage = spell.damage
+	proj.speed = final_speed
+	proj.damage = final_damage
 	proj.damage_type = "spell"
 	proj.interrupt_type = spell.interrupt_type
 	proj.source = self
@@ -1503,32 +1557,52 @@ func _fire_spell_projectile(spell: SpellData):
 
 func _fire_targeted_projectile(spell: SpellData, target: Node):
 	var dir: Vector2 = (target.global_position - global_position).normalized()
+	var is_channeled_ctx: bool = is_channeling_spell and channel_spell_index >= 0 and channel_spell_index < spell_slots.size() and spell_slots[channel_spell_index] == spell
+	var spell_ctx := {
+		ContextKeys.SOURCE: self,
+		ContextKeys.TARGET: target,
+		ContextKeys.ATTACK_ID: spell.spell_name,
+		ContextKeys.DAMAGE_TYPE: "spell",
+		ContextKeys.TEAM_ID: team_id,
+		ContextKeys.SPELL_DATA: spell,
+		ContextKeys.CAST_DIRECTION: dir,
+		ContextKeys.TARGETED_DELIVERY: _get_spell_targeted_delivery(spell),
+		ContextKeys.IS_CHANNELED: is_channeled_ctx,
+	}
+
+	var final_damage: float = spell.damage
+	var final_speed: float = spell.projectile_speed
+	var final_homing: float = spell.targeted_homing_turn_speed
+	if attunements:
+		final_damage = float(attunements.modify_value(ModKeys.SPELL_DAMAGE, final_damage, spell_ctx))
+		final_speed = float(attunements.modify_value(ModKeys.SPELL_PROJECTILE_SPEED, final_speed, spell_ctx))
+		final_homing = float(attunements.modify_value(ModKeys.SPELL_HOMING_TURN_SPEED, final_homing, spell_ctx))
+	final_speed = maxf(0.0, final_speed)
+	final_homing = maxf(0.0, final_homing)
+	spell_ctx[ContextKeys.DAMAGE] = final_damage
+	spell_ctx[ContextKeys.PROJECTILE_SPEED] = final_speed
+	spell_ctx[ContextKeys.HOMING_TURN_SPEED] = final_homing
+	
+	var targeted_delivery: String = _get_spell_targeted_delivery(spell, target)
+	spell_ctx[ContextKeys.TARGETED_DELIVERY] = targeted_delivery
 	
 	# Targeted application spells spawn directly at validated target.
-	if spell.targeted_delivery == "apply_at_target":
+	if targeted_delivery == "apply_at_target":
 		if spell.spell_scene:
-			_spawn_spell_scene(spell, target.global_position, dir, target)
+			_spawn_spell_scene(spell, target.global_position, dir, target, spell_ctx)
 		elif target.has_method("take_damage"):
-			var ctx := {
-				ContextKeys.SOURCE: self,
-				ContextKeys.TARGET: target,
-				ContextKeys.ATTACK_ID: spell.spell_name,
-				ContextKeys.DAMAGE_TYPE: "spell",
-				ContextKeys.TEAM_ID: team_id,
-				ContextKeys.SPELL_DATA: spell,
-			}
-			target.take_damage(spell.damage, Vector2.ZERO, spell.interrupt_type, ctx)
+			target.take_damage(final_damage, Vector2.ZERO, spell.interrupt_type, spell_ctx)
 		return
 		
 	if spell.spell_scene:
-		_spawn_spell_scene(spell, global_position + dir * 40, dir, target)
+		_spawn_spell_scene(spell, global_position + dir * 40, dir, target, spell_ctx)
 		return
 
 	var proj = projectile_scene.instantiate()
 	proj.global_position = _get_projectile_spawn_base() + dir * 40
 	proj.direction = dir
-	proj.speed = spell.projectile_speed
-	proj.damage = spell.damage
+	proj.speed = final_speed
+	proj.damage = final_damage
 	proj.damage_type = "spell"
 	proj.interrupt_type = spell.interrupt_type
 	proj.source = self
@@ -1542,7 +1616,7 @@ func _fire_targeted_projectile(spell: SpellData, target: Node):
 		proj.get_node("ColorRect").color = spell.projectile_color
 
 ## Spawn a spell's custom scene, passing it context for initialization.
-func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.RIGHT, target: Node = null):
+func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.RIGHT, target: Node = null, extra_ctx: Dictionary = {}):
 	var entity = spell.spell_scene.instantiate()
 	entity.global_position = pos
 
@@ -1570,6 +1644,8 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		}
 		if target:
 			ctx[ContextKeys.CAST_TARGET] = target
+			for k in extra_ctx.keys():
+				ctx[k] = extra_ctx[k]
 		entity.initialize(ctx)
 
 	get_tree().current_scene.add_child(entity)

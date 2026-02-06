@@ -20,3 +20,11 @@ const BLOCK := "block"
 
 # Regen
 const MANA_REGEN := "mana_regen"
+
+# Spell tuning hooks
+const SPELL_DAMAGE := "spell_damage"
+const SPELL_PROJECTILE_SPEED := "spell_projectile_speed"
+const SPELL_HOMING_TURN_SPEED := "spell_homing_turn_speed"
+const SPELL_CHANNEL_DRAIN := "spell_channel_drain"
+const SPELL_CHANNEL_INTERVAL := "spell_channel_interval"
+const SPELL_CHANNEL_PROJECTILES_PER_TICK := "spell_channel_projectiles_per_tick"
