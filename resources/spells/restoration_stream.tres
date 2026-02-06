@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Restoration Stream"
+description = "Channeled: continuously heals the nearest ally (or yourself). Hold to maintain the stream; drains mana over time."
+mana_cost = 0.0
+cooldown = 3.0
+cast_type = "targeted"
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.3, 1.0, 0.7, 1)
+targeted_delivery = "apply_at_target"
+can_target_allies = true
+can_target_enemies = false
+heal_amount = 8.0
+is_channeled = true
+channel_mana_drain_per_second = 14.0
+channel_fire_interval = 0.25
+channel_projectiles_per_tick = 1
+slow_move = 0.7
+toggle_mana_drain = 0.0
