@@ -77,7 +77,7 @@ func _build_ui() -> void:
 	var bg := Panel.new()
 	bg.name = "BackgroundPanel"
 	bg.position = Vector2(-6, 0)
-	bg.size = Vector2(200, 28 + SLOT_COUNT * 28)
+	bg.size = Vector2(210, 60 + SLOT_COUNT * 28)
 	add_child(bg)
 
 	# --- VBoxContainer for slot rows ---

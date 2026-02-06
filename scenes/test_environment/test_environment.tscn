@@ -90,9 +90,9 @@ offset_right = -660.0
 offset_bottom = 27.0
 dummy_path = NodePath("../TrainingDummy")
 
-[node name="SpellSelector" parent="." instance=ExtResource("8_spsel")]
-offset_left = -660.0
-offset_top = 70.0
-offset_right = -660.0
-offset_bottom = 70.0
+[node name="SpellSelector" parent="." unique_id=1739705035 instance=ExtResource("8_spsel")]
+offset_left = -375.0
+offset_top = -174.0
+offset_right = -375.0
+offset_bottom = -174.0
 player_path = NodePath("../Player")
