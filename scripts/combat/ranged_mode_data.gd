@@ -15,6 +15,7 @@ class_name RangedModeData
 
 ## Mode behavior
 @export var fire_cooldown: float = 0.4
+@export var mana_cost: float = 5.0
 @export var move_speed_mult: float = 0.7  # Movement speed while in ranged mode
 
 

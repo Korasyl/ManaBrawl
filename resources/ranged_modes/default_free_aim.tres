@@ -1,15 +1,6 @@
-[gd_resource type="Resource" script_class="RangedModeData" format=3]
+[gd_resource type="Resource" script_class="RangedModeData" format=3 uid="uid://bklsp5uj1r7r3"]
 
-[ext_resource type="Script" path="res://scripts/combat/ranged_mode_data.gd" id="1_rmd"]
+[ext_resource type="Script" uid="uid://k6koplk8b1p2" path="res://scripts/combat/ranged_mode_data.gd" id="1_rmd"]
 
 [resource]
 script = ExtResource("1_rmd")
-mode_name = "Basic Ranged"
-mode_type = "free_aim"
-damage = 8.0
-damage_type = "ranged"
-interrupt_type = "flinch"
-projectile_speed = 600.0
-projectile_color = Color(1, 0.9, 0.3, 1)
-fire_cooldown = 0.4
-move_speed_mult = 0.7

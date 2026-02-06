@@ -101,6 +101,8 @@ var is_channeling_spell: bool = false
 var channel_spell_index: int = -1
 var channel_fire_timer: float = 0.0
 var suppress_light_attack_release_once: bool = false
+const POST_SPELL_MELEE_LOCKOUT: float = 0.08
+var post_spell_melee_lockout_timer: float = 0.0
 var active_toggles: Array[bool] = [false, false, false, false]
 
 ## Placement mode state (for "placement" cast type spells)
@@ -180,6 +182,7 @@ func _physics_process(delta):
 		if respawn_timer <= 0:
 			respawn()
 		update_hud()
+		queue_redraw()
 		return
 
 	# --- Timers (always tick) ---
@@ -216,6 +219,8 @@ func _physics_process(delta):
 	if queue_regen_lock_timer > 0:
 		queue_regen_lock_timer -= delta
 
+	if post_spell_melee_lockout_timer > 0:
+		post_spell_melee_lockout_timer -= delta
 
 	# Spell cooldowns
 	for i in 4:
@@ -274,6 +279,7 @@ func _physics_process(delta):
 		update_hud()
 		update_facing_direction()
 		update_animation()
+		queue_redraw()
 		return
 
 	# --- Normal action processing ---
@@ -305,8 +311,7 @@ func _physics_process(delta):
 	update_hud()
 	update_facing_direction()
 	update_animation()
-	if is_in_ranged_mode or queued_spell_index >= 0:
-		queue_redraw()
+	queue_redraw()
 
 func handle_movement(delta):
 	# Get input direction
@@ -705,7 +710,10 @@ func handle_attack_timers(delta):
 
 func handle_attack_input():
 	if suppress_light_attack_release_once:
-		suppress_light_attack_release_once = false
+		if Input.is_action_just_released("light_attack"):
+			suppress_light_attack_release_once = false
+			heavy_charge_timer = 0.0
+			is_charging_heavy = false
 		return
 
 	# Can't melee while in ranged mode, spell queue, coalescing, dashing, recovery, blocking, or on cooldown
@@ -715,7 +723,9 @@ func handle_attack_input():
 		return
 	if melee_cooldown_timer > 0:
 		return
-
+	if post_spell_melee_lockout_timer > 0:
+		return
+		
 	# Light attack (tap) or Heavy attack (hold and release)
 	if Input.is_action_just_released("light_attack") and not is_attacking:
 		if heavy_charge_timer >= stats.heavy_attack_charge_time:
@@ -970,6 +980,7 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	channel_spell_index = -1
 	channel_fire_timer = 0.0
 	suppress_light_attack_release_once = false
+	post_spell_melee_lockout_timer = 0.0
 	is_placing = false
 	placement_locked = false
 
@@ -1171,6 +1182,7 @@ func die():
 	channel_spell_index = -1
 	channel_fire_timer = 0.0
 	suppress_light_attack_release_once = false
+	post_spell_melee_lockout_timer = 0.0
 	active_toggles = [false, false, false, false]
 	is_placing = false
 	placement_locked = false
@@ -1210,6 +1222,7 @@ func respawn():
 	channel_spell_index = -1
 	channel_fire_timer = 0.0
 	suppress_light_attack_release_once = false
+	post_spell_melee_lockout_timer = 0.0
 	spell_cooldowns = [0.0, 0.0, 0.0, 0.0]
 	active_toggles = [false, false, false, false]
 	is_placing = false
@@ -1236,6 +1249,18 @@ func _get_effective_ranged_mode() -> RangedModeData:
 		return stats.ranged_mode
 	return _default_ranged_mode
 
+func _spend_ranged_mana(mode: RangedModeData) -> bool:
+	if mode.mana_cost <= 0.0:
+		return true
+	var mana_ctx := {
+		ContextKeys.SOURCE: self,
+		ContextKeys.ATTACK_ID: "ranged_basic",
+		ContextKeys.DAMAGE_TYPE: mode.damage_type,
+		ContextKeys.TEAM_ID: team_id,
+	}
+	var spent := use_mana(mode.mana_cost, "ranged_attack", mana_ctx)
+	return spent > 0.0
+
 func handle_ranged_mode():
 	# Can't enter ranged mode during these states
 	if is_attacking or is_blocking or is_coalescing or is_dashing:
@@ -1255,7 +1280,8 @@ func handle_ranged_mode():
 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
 			match mode.mode_type:
 				"free_aim":
-					fire_projectile(mode)
+					if _spend_ranged_mana(mode):
+						fire_projectile(mode)
 				"targeted":
 					if _fire_targeted_ranged(mode):
 						ranged_cooldown_timer = mode.fire_cooldown
@@ -1327,6 +1353,9 @@ func _fire_targeted_ranged(mode: RangedModeData) -> bool:
 	if (not is_target_ally) and not mode.targeted_affect_enemies:
 		return false
 
+	if not _spend_ranged_mana(mode):
+		return false
+
 	if mode.targeted_delivery == "projectile":
 		_fire_targeted_ranged_projectile(mode, target)
 	else:
@@ -1361,7 +1390,10 @@ func _apply_targeted_ranged_effects(mode: RangedModeData, target: Node) -> void:
 ## Fire a homing projectile that delivers targeted ranged mode effects on hit.
 ## Used when RangedModeData.targeted_delivery == "projectile".
 func _fire_targeted_ranged_projectile(mode: RangedModeData, target: Node) -> void:
-	var dir := (target.global_position - global_position).normalized()
+	if not (target is Node2D):
+		return
+	var target_node := target as Node2D
+	var dir: Vector2 = (target_node.global_position - global_position).normalized()
 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
 	var proj = scene.instantiate()
 	proj.global_position = _get_projectile_spawn_base() + dir * 40
@@ -1624,6 +1656,9 @@ func cast_spell(index: int):
 			_fire_spell_projectile(spell)
 		"targeted":
 			_fire_targeted_projectile(spell, target_body)
+
+	suppress_light_attack_release_once = true
+	post_spell_melee_lockout_timer = POST_SPELL_MELEE_LOCKOUT
 
 	if debug_hud:
 		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name)
@@ -1923,8 +1958,8 @@ func _draw():
 			var mode := _get_effective_ranged_mode()
 			if mode.mode_type == "targeted":
 				var target := _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
-				if target != null:
-					var target_local := target.global_position - global_position
+				if target is Node2D:
+					var target_local: Vector2 = target.global_position - global_position
 					var is_tgt_ally := is_ally(target)
 					var indicator_color := Color(0.3, 1.0, 0.3, 0.6) if is_tgt_ally else Color(1.0, 0.3, 0.3, 0.6)
 					draw_circle(target_local, 18.0, Color(indicator_color.r, indicator_color.g, indicator_color.b, 0.15))
