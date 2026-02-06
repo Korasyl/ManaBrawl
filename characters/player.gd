@@ -83,6 +83,7 @@ var is_in_ranged_mode: bool = false
 var ranged_cooldown_timer: float = 0.0
 var aim_direction: Vector2 = Vector2.RIGHT
 var projectile_scene: PackedScene = preload("res://scenes/combat/projectile.tscn")
+var _default_ranged_mode: RangedModeData = preload("res://resources/ranged_modes/default_free_aim.tres")
 
 ## Spell state
 @export var spell_slots: Array[SpellData] = []
@@ -304,7 +305,8 @@ func handle_movement(delta):
 
 	# Ranged mode movement penalty
 	if is_in_ranged_mode:
-		target_speed *= stats.ranged_mode_speed_mult
+		var mode := _get_effective_ranged_mode()
+		target_speed *= mode.move_speed_mult
 
 	# Toggle spell speed modifiers
 	for i in 4:
@@ -897,6 +899,9 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	coalescence_spell_lockout = 0.0
 	block_broken_timer = 0.0
 	melee_cooldown_timer = 0.0
+	is_in_ranged_mode = false
+	ranged_cooldown_timer = 0.0
+	queued_spell_index = -1
 
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
@@ -1107,9 +1112,24 @@ func respawn():
 
 # ---- Ranged Mode ----
 
+## Returns the effective ranged mode: attunement override > stats.ranged_mode > fallback default.
+func _get_effective_ranged_mode() -> RangedModeData:
+	if attunements:
+		var override := attunements.get_ranged_mode_override()
+		if override != null:
+			return override
+	if stats and stats.ranged_mode:
+		return stats.ranged_mode
+	return _default_ranged_mode
+
 func handle_ranged_mode():
 	# Can't enter ranged mode during these states
 	if is_attacking or is_blocking or is_coalescing or is_dashing:
+		is_in_ranged_mode = false
+		return
+
+	var mode := _get_effective_ranged_mode()
+	if mode.mode_type == "none":
 		is_in_ranged_mode = false
 		return
 
@@ -1119,22 +1139,27 @@ func handle_ranged_mode():
 
 		# Fire on LMB (only if no spell queued)
 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
-			fire_projectile()
+			fire_projectile(mode)
 	else:
 		is_in_ranged_mode = false
 
-func fire_projectile():
-	var proj = projectile_scene.instantiate()
+func fire_projectile(mode: RangedModeData):
+	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
+	var proj = scene.instantiate()
 	proj.global_position = global_position + aim_direction * 40
 	proj.direction = aim_direction
-	proj.speed = stats.ranged_speed
-	proj.damage = stats.ranged_damage
+	proj.speed = mode.projectile_speed
+	proj.damage = mode.damage
+	proj.interrupt_type = mode.interrupt_type
 	proj.source = self
 	get_tree().current_scene.add_child(proj)
-	ranged_cooldown_timer = stats.ranged_fire_cooldown
+	# Apply projectile color
+	if proj.has_node("ColorRect"):
+		proj.get_node("ColorRect").color = mode.projectile_color
+	ranged_cooldown_timer = mode.fire_cooldown
 
 	if debug_hud:
-		debug_hud.log_action("[color=yellow]Ranged Shot[/color]")
+		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
 
 # ---- Spell System ----
 
@@ -1288,5 +1313,10 @@ func _draw():
 	if is_in_ranged_mode or queued_spell_index >= 0:
 		var dir := (get_global_mouse_position() - global_position).normalized()
 		var aim_end := dir * 120
-		var line_color := Color(1, 0.9, 0.3, 0.5) if is_in_ranged_mode else Color(0.6, 0.3, 1.0, 0.5)
+		var line_color: Color
+		if is_in_ranged_mode:
+			var mode := _get_effective_ranged_mode()
+			line_color = Color(mode.projectile_color, 0.5)
+		else:
+			line_color = Color(0.6, 0.3, 1.0, 0.5)
 		draw_line(Vector2.ZERO, aim_end, line_color, 2.0)

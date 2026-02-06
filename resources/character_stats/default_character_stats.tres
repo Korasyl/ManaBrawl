@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="CharacterStats" format=3 uid="uid://bxedo12ho0f4l"]
 
 [ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_ja6m7"]
+[ext_resource type="Resource" path="res://resources/ranged_modes/default_free_aim.tres" id="2_rnged"]
 
 [resource]
 script = ExtResource("1_ja6m7")
@@ -9,4 +10,5 @@ wall_jump_cost = 1.0
 wall_cling_drain = 7.0
 coalescence_multiplier = 6.0
 knockback_force = 800.0
+ranged_mode = ExtResource("2_rnged")
 metadata/_custom_type_script = "uid://s4jsexs1g15d"

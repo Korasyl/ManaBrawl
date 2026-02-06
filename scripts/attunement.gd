@@ -29,6 +29,12 @@ func modify_value(_player: Node, _key: String, value: float, _ctx: Dictionary) -
 	# Override in subclasses for context-aware conditional modifiers.
 	return value
 
+## Ranged mode override — subclasses return a RangedModeData to replace the character's
+## default ranged mode entirely (e.g. Bolt's attunement swapping free-aim to targeted).
+## Return null to keep the character's default.
+func get_ranged_mode_override() -> RangedModeData:
+	return null
+
 # --- Event hooks (optional) ---
 # These are intentionally generic. You can subclass Attunement later for special behavior.
 

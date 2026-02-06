@@ -39,8 +39,5 @@ class_name CharacterStats
 @export var heavy_attack_duration: float = 0.45
 @export var knockback_force: float = 300.0  # For heavy attacks
 
-## Ranged Stats
-@export var ranged_damage: float = 8.0
-@export var ranged_speed: float = 600.0
-@export var ranged_fire_cooldown: float = 0.4  # Seconds between shots
-@export var ranged_mode_speed_mult: float = 0.7  # Movement speed multiplier while aiming
+## Ranged
+@export var ranged_mode: RangedModeData
