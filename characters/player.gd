@@ -62,6 +62,7 @@ var coalescence_spell_lockout: float = 0.0  # Cannot cast spells for 3s after co
 var crouch_boost_charge_timer: float = 0.0
 var crouch_boost_charged: bool = false
 var crouch_boost_window_timer: float = 0.0
+var crouch_boost_last_charge_duration: float = 0.0  # Snapshot for context
 const CROUCH_BOOST_CHARGE_TIME: float = 0.75
 const CROUCH_BOOST_WINDOW: float = 0.5
 
@@ -415,7 +416,15 @@ func handle_movement(delta):
 					crouch_boost_window_timer = 0.0
 					just_jumped = true
 					coyote_timer = 0.0
-					emit_signal("action_started", "crouch_boost", {})
+					var ctx := {
+						ContextKeys.MANA_SPENT: spent,
+						ContextKeys.CROUCH_BOOST_CHARGE_DURATION: crouch_boost_last_charge_duration,
+						ContextKeys.CROUCH_BOOST_VELOCITY: stats.crouch_boost_velocity,
+						ContextKeys.IS_AIRBORNE: false,
+					}
+					emit_signal("action_started", "crouch_boost", ctx)
+					if attunements:
+						attunements.notify_action_started("crouch_boost", ctx)
 					if debug_hud:
 						debug_hud.log_action("[color=yellow]Crouch Boost![/color]", -spent)
 				else:
@@ -455,6 +464,7 @@ func handle_crouch_boost(delta):
 	else:
 		if crouch_boost_charged and not crouch_held:
 			# Charged and crouch released — open the jump window
+			crouch_boost_last_charge_duration = crouch_boost_charge_timer
 			crouch_boost_window_timer = CROUCH_BOOST_WINDOW
 		crouch_boost_charged = false
 		crouch_boost_charge_timer = 0.0
