@@ -388,7 +388,7 @@ func handle_movement(delta):
 		target_speed *= status_effects.get_speed_mult()
 
 	# --- Apply horizontal movement with acceleration ---
-	var desired_vx := input_dir * target_speed
+	var desired_vx: float = float(input_dir) * float(target_speed)
 
 	if on_ground:
 		if input_dir != 0:
