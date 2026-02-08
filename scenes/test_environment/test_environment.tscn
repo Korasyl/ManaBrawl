@@ -15,6 +15,12 @@ size = Vector2(1000, 50)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gul7h"]
 size = Vector2(50, 400)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(200, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_steps"]
+size = Vector2(80, 15)
+
 [node name="TestEnvironment" type="Node2D" unique_id=101179795]
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1331215601]
@@ -58,6 +64,58 @@ offset_left = -25.0
 offset_top = -200.0
 offset_right = 25.0
 offset_bottom = 200.0
+
+[node name="Platform" type="StaticBody2D" parent="."]
+position = Vector2(-150, 350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="ColorRect" type="ColorRect" parent="Platform"]
+offset_left = -100.0
+offset_top = -15.0
+offset_right = 100.0
+offset_bottom = 15.0
+color = Color(0.35, 0.30, 0.18, 1)
+
+[node name="StairStep1" type="StaticBody2D" parent="."]
+position = Vector2(150, 470)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep1"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep1"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
+
+[node name="StairStep2" type="StaticBody2D" parent="."]
+position = Vector2(150, 450)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep2"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep2"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
+
+[node name="StairStep3" type="StaticBody2D" parent="."]
+position = Vector2(150, 430)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep3"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep3"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
 
 [node name="TrainingDummy" parent="." unique_id=975334861 groups=["training_dummy"] instance=ExtResource("3_gul7h")]
 position = Vector2(230, 409)

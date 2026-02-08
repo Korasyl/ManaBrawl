@@ -24,6 +24,14 @@ var team_id: int = 0
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var melee_hitbox: Area2D = $MeleeHitbox
 @onready var melee_collision: CollisionShape2D = $MeleeHitbox/CollisionShape2D
+@onready var body_collision: CollisionShape2D = $CollisionShape2D
+@onready var color_rect: ColorRect = $ColorRect
+
+## Ledge detection raycasts
+@onready var ledge_check_left: RayCast2D = $LedgeCheckLeft
+@onready var ledge_check_right: RayCast2D = $LedgeCheckRight
+@onready var ledge_above_check_left: RayCast2D = $LedgeAboveCheckLeft
+@onready var ledge_above_check_right: RayCast2D = $LedgeAboveCheckRight
 
 ## HUD reference (we'll set this from the scene)
 var debug_hud: Control = null
@@ -58,6 +66,25 @@ var is_coalescing: bool = false
 var coalescence_startup_timer: float = 0.0
 var coalescence_recovery_timer: float = 0.0
 var coalescence_spell_lockout: float = 0.0  # Cannot cast spells for 3s after coalescence
+
+## Dynamic hitbox dimensions (capsule)
+const STAND_HITBOX_HEIGHT: float = 60.0
+const STAND_HITBOX_RADIUS: float = 20.0
+const CROUCH_HITBOX_HEIGHT: float = 36.0
+const CROUCH_HITBOX_RADIUS: float = 20.0
+## Visual rect offsets for standing/crouching
+const STAND_VISUAL_TOP: float = -60.0
+const CROUCH_VISUAL_TOP: float = -36.0
+var current_hitbox_crouched: bool = false
+
+## Ledge grab state
+var is_ledge_grabbing: bool = false
+var is_clambering: bool = false
+var ledge_grab_position: Vector2 = Vector2.ZERO  # World position of the ledge top
+var clamber_timer: float = 0.0
+var clamber_start_pos: Vector2 = Vector2.ZERO
+var clamber_target_pos: Vector2 = Vector2.ZERO
+const CLAMBER_DURATION: float = 0.25  # Time to pull up onto ledge
 
 ## Crouch Boost state (mana-powered jump from stationary crouch + sprint charge)
 var crouch_boost_charge_timer: float = 0.0
@@ -159,6 +186,8 @@ const ARM_POSES := {
 	"coalesce_ground":  Vector2(-0.6, 0.6),
 	"coalesce_air":     Vector2(-0.55, 0.55),
 	"coalesce_wall":    Vector2(-0.5, 0.35),
+	"ledge_grab":       Vector2(-1.2, -1.0),
+	"ledge_clamber":    Vector2(-0.8, -0.6),
 }
 
 func _ready():
@@ -335,6 +364,32 @@ func _physics_process(delta):
 	is_on_wall_left = wall_check_left.is_colliding()
 	is_on_wall_right = wall_check_right.is_colliding()
 
+	# --- Clamber processing (overrides everything) ---
+	if is_clambering:
+		handle_clamber(delta)
+		update_hud()
+		update_facing_direction()
+		update_animation()
+		update_arms()
+		queue_redraw()
+		return
+
+	# --- Ledge grab processing ---
+	if is_ledge_grabbing:
+		velocity = Vector2.ZERO
+		# Allow jump to clamber up, or crouch/down to let go
+		if Input.is_action_just_pressed("jump"):
+			start_clamber()
+		elif Input.is_action_just_pressed("crouch"):
+			cancel_ledge_grab()
+		move_and_slide()
+		update_hud()
+		update_facing_direction()
+		update_animation()
+		update_arms()
+		queue_redraw()
+		return
+
 	# Apply gravity (unless dashing or coalescing)
 	if not is_on_floor() and not is_dashing and not is_coalescing:
 		velocity.y += gravity * delta
@@ -347,6 +402,8 @@ func _physics_process(delta):
 		wall_jump_lock_timer = 0.0
 		coyote_timer = 0.0
 		just_jumped = false
+		if is_ledge_grabbing:
+			cancel_ledge_grab()
 	elif was_on_floor and not just_jumped:
 		# Just walked off a ledge — start coyote window
 		coyote_timer = movement_data.coyote_time if movement_data else 0.12
@@ -379,6 +436,7 @@ func _physics_process(delta):
 
 	if not is_coalescing and not is_attacking and not is_blocking:
 		handle_wall_mechanics(delta)
+		handle_ledge_grab(delta)
 
 	if not is_coalescing and not is_attacking and not is_blocking:
 		handle_dash()
@@ -398,6 +456,9 @@ func _physics_process(delta):
 	# Movement: not while dashing, wall jump locked, coalescing, recovering, attacking, or blocking
 	if not is_dashing and wall_jump_lock_timer <= 0 and not is_coalescing and coalescence_recovery_timer <= 0 and not is_attacking:
 		handle_movement(delta)
+
+	# Update hitbox size for crouch (after movement determines crouch state)
+	update_hitbox_for_crouch()
 
 	regenerate_mana(delta)
 	move_and_slide()
@@ -544,6 +605,33 @@ func handle_crouch_boost(delta):
 		crouch_boost_charged = false
 		crouch_boost_charge_timer = 0.0
 
+func update_hitbox_for_crouch():
+	var should_crouch := is_crouching or is_crouchwalking
+	if should_crouch and not current_hitbox_crouched:
+		# Shrink to crouch hitbox
+		var shape: CapsuleShape2D = body_collision.shape
+		shape.height = CROUCH_HITBOX_HEIGHT
+		shape.radius = CROUCH_HITBOX_RADIUS
+		body_collision.position.y = -CROUCH_HITBOX_HEIGHT / 2.0
+		# Adjust visual rect
+		color_rect.offset_top = CROUCH_VISUAL_TOP
+		current_hitbox_crouched = true
+		# Move wall raycasts down to match shorter body
+		wall_check_left.position.y = -CROUCH_HITBOX_HEIGHT / 2.0
+		wall_check_right.position.y = -CROUCH_HITBOX_HEIGHT / 2.0
+	elif not should_crouch and current_hitbox_crouched:
+		# Restore standing hitbox
+		var shape: CapsuleShape2D = body_collision.shape
+		shape.height = STAND_HITBOX_HEIGHT
+		shape.radius = STAND_HITBOX_RADIUS
+		body_collision.position.y = -STAND_HITBOX_HEIGHT / 2.0
+		# Restore visual rect
+		color_rect.offset_top = STAND_VISUAL_TOP
+		current_hitbox_crouched = false
+		# Restore wall raycast positions
+		wall_check_left.position.y = -STAND_HITBOX_HEIGHT / 2.0
+		wall_check_right.position.y = -STAND_HITBOX_HEIGHT / 2.0
+
 func update_facing_direction():
 	# Get mouse position in world space
 	var mouse_pos = get_global_mouse_position()
@@ -604,7 +692,11 @@ func update_hud():
 	
 	# Update state
 	var state = "Idle"
-	if is_flinched:
+	if is_clambering:
+		state = "CLAMBERING"
+	elif is_ledge_grabbing:
+		state = "LEDGE GRAB"
+	elif is_flinched:
 		state = "FLINCHED (%.1fs)" % stun_timer
 	elif is_staggered:
 		state = "STAGGERED (%.1fs)" % stun_timer
@@ -771,6 +863,94 @@ func handle_wall_mechanics(delta):
 				if debug_hud:
 					debug_hud.log_action("Wall Jump", -spent)
 
+func handle_ledge_grab(_delta):
+	# Don't check for ledge grabs in these states
+	if is_on_floor() or is_dashing or is_coalescing or is_ledge_grabbing or is_clambering:
+		return
+	if not movement_data or not movement_data.can_ledge_grab:
+		return
+	# Only grab when falling (or barely rising)
+	if velocity.y < movement_data.ledge_grab_min_fall_speed:
+		return
+
+	# Check each side: wall raycast must be colliding (there's a wall),
+	# the ledge top ray must detect a surface (there's a ledge top),
+	# and the ledge above ray must NOT collide (there's open space above the ledge).
+	var grab_left := (is_on_wall_left
+		and ledge_check_left.is_colliding()
+		and not ledge_above_check_left.is_colliding())
+	var grab_right := (is_on_wall_right
+		and ledge_check_right.is_colliding()
+		and not ledge_above_check_right.is_colliding())
+
+	if not grab_left and not grab_right:
+		return
+
+	# Determine which side to grab
+	var ledge_ray: RayCast2D
+	var grab_dir: int  # -1 for left wall, +1 for right wall
+	if grab_left:
+		ledge_ray = ledge_check_left
+		grab_dir = -1
+	else:
+		ledge_ray = ledge_check_right
+		grab_dir = 1
+
+	# The collision point tells us the Y of the ledge surface
+	var ledge_point := ledge_ray.get_collision_point()
+	ledge_grab_position = ledge_point
+
+	# Snap the player so their hands are at the ledge top
+	# Position the character so the top of the hitbox aligns with the ledge
+	var hitbox_half_h := STAND_HITBOX_HEIGHT / 2.0
+	global_position.y = ledge_point.y + hitbox_half_h
+
+	# Enter ledge grab state
+	is_ledge_grabbing = true
+	velocity = Vector2.ZERO
+	is_wall_sliding = false
+	is_wall_clinging = false
+
+	if debug_hud:
+		var side := "Left" if grab_dir == -1 else "Right"
+		debug_hud.log_action("[color=orange]Ledge Grab (%s)[/color]" % side)
+
+func handle_clamber(delta):
+	if not is_clambering:
+		return
+
+	clamber_timer += delta
+	var t := clampf(clamber_timer / CLAMBER_DURATION, 0.0, 1.0)
+	# Ease-out for smooth pull-up
+	var eased := 1.0 - (1.0 - t) * (1.0 - t)
+	global_position = clamber_start_pos.lerp(clamber_target_pos, eased)
+
+	if t >= 1.0:
+		# Clamber complete
+		is_clambering = false
+		clamber_timer = 0.0
+		velocity = Vector2.ZERO
+		if debug_hud:
+			debug_hud.log_action("[color=lime]Clamber complete[/color]")
+
+func start_clamber():
+	is_ledge_grabbing = false
+	is_clambering = true
+	clamber_timer = 0.0
+	clamber_start_pos = global_position
+	# Target: move up so feet are at ledge level, then slightly forward onto the platform
+	var grab_dir := -1 if is_on_wall_left else 1
+	clamber_target_pos = Vector2(
+		ledge_grab_position.x + grab_dir * 20.0,  # Step onto the platform
+		ledge_grab_position.y  # Feet at ledge top
+	)
+	if debug_hud:
+		debug_hud.log_action("[color=yellow]Clambering...[/color]")
+
+func cancel_ledge_grab():
+	is_ledge_grabbing = false
+	is_clambering = false
+	clamber_timer = 0.0
 
 func handle_blocking(delta):
 	# GDD: Hold Alt to block. Ground only. Constant mana drain. Cannot block while airborne.
@@ -830,7 +1010,11 @@ func update_animation():
 	var facing_sign := -1.0 if animated_sprite.flip_h else 1.0
 	var moving_backward := move_input != 0 and (move_input * facing_sign) < 0
 
-	if is_flinched or is_staggered:
+	if is_clambering:
+		anim = "ledge_clamber"
+	elif is_ledge_grabbing:
+		anim = "ledge_grab"
+	elif is_flinched or is_staggered:
 		anim = "hit"
 	elif is_blocking:
 		anim = "block"
@@ -1179,6 +1363,9 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	is_flinched = false
 	is_staggered = false
 	is_charging_heavy = false
+	is_ledge_grabbing = false
+	is_clambering = false
+	clamber_timer = 0.0
 	block_broken = false
 	stun_timer = 0.0
 	attack_timer = 0.0
@@ -1328,6 +1515,10 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 		if debug_hud:
 			debug_hud.log_action("[color=orange]Coalescence interrupted (Stagger)![/color]")
 
+	# Stagger/knockback interrupts ledge grab
+	if is_ledge_grabbing or is_clambering:
+		cancel_ledge_grab()
+
 	# Apply knockback and interrupt current actions
 	if knockback_velocity != Vector2.ZERO:
 		velocity = knockback_velocity
@@ -1392,6 +1583,9 @@ func die():
 	is_staggered = false
 	is_charging_heavy = false
 	is_in_ranged_mode = false
+	is_ledge_grabbing = false
+	is_clambering = false
+	clamber_timer = 0.0
 	queued_spell_index = -1
 	queued_spell_mana_paid = 0.0
 	queue_regen_lock_timer = 0.0
