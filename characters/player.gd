@@ -58,6 +58,13 @@ var coalescence_startup_timer: float = 0.0
 var coalescence_recovery_timer: float = 0.0
 var coalescence_spell_lockout: float = 0.0  # Cannot cast spells for 3s after coalescence
 
+## Crouch Boost state (mana-powered jump from stationary crouch + sprint charge)
+var crouch_boost_charge_timer: float = 0.0
+var crouch_boost_charged: bool = false
+var crouch_boost_window_timer: float = 0.0
+const CROUCH_BOOST_CHARGE_TIME: float = 0.75
+const CROUCH_BOOST_WINDOW: float = 0.5
+
 ## Interrupt state
 var is_flinched: bool = false
 var is_staggered: bool = false
@@ -225,6 +232,9 @@ func _physics_process(delta):
 	if post_spell_melee_lockout_timer > 0:
 		post_spell_melee_lockout_timer -= delta
 
+	if crouch_boost_window_timer > 0:
+		crouch_boost_window_timer -= delta
+
 	# Spell cooldowns
 	for i in 4:
 		if spell_cooldowns[i] > 0:
@@ -319,6 +329,8 @@ func _physics_process(delta):
 	if _passive:
 		_passive._passive_process(delta)
 
+	handle_crouch_boost(delta)
+
 	# Movement: not while dashing, wall jump locked, coalescing, recovering, attacking, or blocking
 	if not is_dashing and wall_jump_lock_timer <= 0 and not is_coalescing and coalescence_recovery_timer <= 0 and not is_attacking:
 		handle_movement(delta)
@@ -395,9 +407,26 @@ func handle_movement(delta):
 	if Input.is_action_just_pressed("jump"):
 		var can_ground_jump := on_ground or coyote_timer > 0
 		if can_ground_jump:
-			velocity.y = stats.jump_velocity
-			just_jumped = true
-			coyote_timer = 0.0
+			# Check for mana-powered crouch boost jump
+			if crouch_boost_window_timer > 0:
+				var spent := use_mana(stats.crouch_boost_cost, "crouch_boost")
+				if spent > 0.0:
+					velocity.y = stats.crouch_boost_velocity
+					crouch_boost_window_timer = 0.0
+					just_jumped = true
+					coyote_timer = 0.0
+					emit_signal("action_started", "crouch_boost", {})
+					if debug_hud:
+						debug_hud.log_action("[color=yellow]Crouch Boost![/color]", -spent)
+				else:
+					# Not enough mana — fall through to normal jump
+					velocity.y = stats.jump_velocity
+					just_jumped = true
+					coyote_timer = 0.0
+			else:
+				velocity.y = stats.jump_velocity
+				just_jumped = true
+				coyote_timer = 0.0
 			# Snapshot air cap at moment of jump if grounded speed is valid
 			if on_ground and abs(velocity.x) > 0:
 				air_speed_cap = abs(velocity.x)
@@ -408,6 +437,27 @@ func handle_movement(delta):
 				can_double_jump = false
 				if debug_hud:
 					debug_hud.log_action("Double Jump", -spent)
+
+func handle_crouch_boost(delta):
+	var input_dir = Input.get_axis("move_left", "move_right")
+	var crouch_held := Input.is_action_pressed("crouch")
+	var sprint_held := Input.is_action_pressed("sprint")
+	var on_ground := is_on_floor()
+
+	var is_charge_valid := on_ground and crouch_held and input_dir == 0 and sprint_held
+
+	if is_charge_valid:
+		crouch_boost_charge_timer += delta
+		if crouch_boost_charge_timer >= CROUCH_BOOST_CHARGE_TIME and not crouch_boost_charged:
+			crouch_boost_charged = true
+			if debug_hud:
+				debug_hud.log_action("[color=yellow]Crouch Boost READY![/color]")
+	else:
+		if crouch_boost_charged and not crouch_held:
+			# Charged and crouch released — open the jump window
+			crouch_boost_window_timer = CROUCH_BOOST_WINDOW
+		crouch_boost_charged = false
+		crouch_boost_charge_timer = 0.0
 
 func update_facing_direction():
 	# Get mouse position in world space
@@ -511,6 +561,12 @@ func update_hud():
 		state = "Wall Slide"
 	elif not is_on_floor():
 		state = "In Air"
+	elif crouch_boost_charged:
+		state = "Boost READY"
+	elif crouch_boost_charge_timer > 0:
+		state = "Charging Boost (%.1fs)" % crouch_boost_charge_timer
+	elif crouch_boost_window_timer > 0:
+		state = "Boost Window (%.1fs)" % crouch_boost_window_timer
 	elif is_sprinting:
 		state = "Sprinting"
 	elif is_crouching:
@@ -698,7 +754,7 @@ func update_animation():
 			anim = "jump"
 		else:
 			anim = "fall"
-	elif is_crouching:
+	elif is_crouching or crouch_boost_charged or crouch_boost_charge_timer > 0:
 		anim = "crouch"
 	elif abs(velocity.x) > 0:
 		# Moving on ground
