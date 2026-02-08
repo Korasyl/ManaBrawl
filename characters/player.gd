@@ -586,14 +586,19 @@ func update_hud():
 		state = "Charging Boost (%.1fs)" % crouch_boost_charge_timer
 	elif crouch_boost_window_timer > 0:
 		state = "Boost Window (%.1fs)" % crouch_boost_window_timer
-	elif is_sprinting:
-		state = "Sprinting"
-	elif is_crouchwalking:
-		state = "Crouchwalking"
+	elif is_sprinting or is_crouchwalking or abs(velocity.x) > 5.0:
+		var move_input := Input.get_axis("move_left", "move_right")
+		var fsign := -1.0 if animated_sprite.flip_h else 1.0
+		var back := move_input != 0 and (move_input * fsign) < 0
+		var suffix := " (Back)" if back else ""
+		if is_sprinting:
+			state = "Sprinting" + suffix
+		elif is_crouchwalking:
+			state = "Crouchwalking" + suffix
+		else:
+			state = "Walking" + suffix
 	elif is_crouching:
 		state = "Crouching"
-	elif abs(velocity.x) > 5.0:
-		state = "Walking"
 	
 	debug_hud.update_state(state)
 	
@@ -749,9 +754,14 @@ func handle_coalescence(delta):
 func update_animation():
 	if not animated_sprite:
 		return
-	
+
 	# Determine which animation to play based on state
 	var anim = "idle"
+
+	# Derive backward movement: moving opposite to mouse-aim facing direction
+	var move_input := Input.get_axis("move_left", "move_right")
+	var facing_sign := -1.0 if animated_sprite.flip_h else 1.0
+	var moving_backward := move_input != 0 and (move_input * facing_sign) < 0
 
 	if is_flinched or is_staggered:
 		anim = "hit"
@@ -778,15 +788,15 @@ func update_animation():
 		else:
 			anim = "fall"
 	elif is_crouchwalking:
-		anim = "crouchwalk"
+		anim = "crouchwalk_back" if moving_backward else "crouchwalk"
 	elif is_crouching or crouch_boost_charged or crouch_boost_charge_timer > 0:
 		anim = "crouch"
 	elif abs(velocity.x) > 0:
 		# Moving on ground
 		if is_sprinting:
-			anim = "sprint"
+			anim = "sprint_back" if moving_backward else "sprint"
 		else:
-			anim = "walk"
+			anim = "walk_back" if moving_backward else "walk"
 	else:
 		anim = "idle"
 	
