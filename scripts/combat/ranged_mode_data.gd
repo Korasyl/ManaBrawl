@@ -24,6 +24,7 @@ class_name RangedModeData
 @export var targeted_allow_self: bool = true
 @export var targeted_affect_allies: bool = true
 @export var targeted_affect_enemies: bool = true
+@export var requires_line_of_sight: bool = true
 
 ## Targeted delivery method: how effects reach the target
 ## "apply_at_target" = instant application, "projectile" = homing projectile delivers effects on hit

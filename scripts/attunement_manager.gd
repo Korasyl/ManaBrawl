@@ -198,3 +198,12 @@ func get_spell_channeled(base_channeled: bool, ctx: Dictionary = {}) -> bool:
 			continue
 		resolved = a.override_spell_channeled(_player, resolved, ctx)
 	return resolved
+
+## Resolve whether line-of-sight is required for a spell or ranged mode.
+func get_line_of_sight(base_los: bool, ctx: Dictionary = {}) -> bool:
+	var resolved: bool = base_los
+	for a in _slots:
+		if a == null:
+			continue
+		resolved = a.override_line_of_sight(_player, resolved, ctx)
+	return resolved
