@@ -37,7 +37,8 @@ const RESPAWN_TIME: float = 3.0
 
 ## Movement state
 var is_sprinting: bool = false
-var is_crouching: bool = false
+var is_crouching: bool = false      # Stationary crouch (holding crouch, no movement)
+var is_crouchwalking: bool = false   # Moving while crouched
 var can_double_jump: bool = true
 var dash_available: bool = true
 var is_dashing: bool = false
@@ -351,16 +352,23 @@ func handle_movement(delta):
 	var target_speed := 0.0
 
 	if on_ground:
-		if input_dir != 0:
-			is_crouching = Input.is_action_pressed("crouch")
-			is_sprinting = Input.is_action_pressed("sprint") and not is_crouching
+		var crouch_held := Input.is_action_pressed("crouch")
 
-			if is_crouching:
+		if input_dir != 0:
+			is_crouchwalking = crouch_held
+			is_crouching = false
+			is_sprinting = Input.is_action_pressed("sprint") and not is_crouchwalking
+
+			if is_crouchwalking:
 				target_speed = stats.crouch_speed
 			elif is_sprinting:
 				target_speed = stats.sprint_speed
 			else:
 				target_speed = stats.walk_speed
+		else:
+			is_crouchwalking = false
+			is_crouching = crouch_held
+			is_sprinting = false
 
 		# Snapshot speed for air cap whenever we're grounded
 		air_speed_cap = target_speed if target_speed > 0 else stats.walk_speed
@@ -538,10 +546,11 @@ func update_hud():
 	elif block_broken:
 		state = "Block Broken (%.1fs)" % block_broken_timer
 	elif is_coalescing:
+		var wall_prefix := "Wall " if (is_wall_clinging or is_wall_sliding) else ""
 		if coalescence_startup_timer > 0:
-			state = "Coalescing... (%.1fs)" % coalescence_startup_timer
+			state = "%sCoalescing... (%.1fs)" % [wall_prefix, coalescence_startup_timer]
 		else:
-			state = "COALESCING! (Mult Regen)"
+			state = "%sCOALESCING! (Mult Regen)" % wall_prefix
 	elif coalescence_recovery_timer > 0:
 		state = "Recovery (%.1fs)" % coalescence_recovery_timer
 	elif coalescence_spell_lockout > 0:
@@ -579,6 +588,8 @@ func update_hud():
 		state = "Boost Window (%.1fs)" % crouch_boost_window_timer
 	elif is_sprinting:
 		state = "Sprinting"
+	elif is_crouchwalking:
+		state = "Crouchwalking"
 	elif is_crouching:
 		state = "Crouching"
 	elif abs(velocity.x) > 5.0:
@@ -747,8 +758,10 @@ func update_animation():
 	elif is_blocking:
 		anim = "block"
 	elif is_coalescing:
-		# Different coalesce animations based on ground vs air
-		if is_on_floor():
+		# Different coalesce animations based on ground / wall / air
+		if is_wall_clinging or is_wall_sliding:
+			anim = "coalesce_wall"
+		elif is_on_floor():
 			anim = "coalesce_ground"
 		else:
 			anim = "coalesce_air"
@@ -764,6 +777,8 @@ func update_animation():
 			anim = "jump"
 		else:
 			anim = "fall"
+	elif is_crouchwalking:
+		anim = "crouchwalk"
 	elif is_crouching or crouch_boost_charged or crouch_boost_charge_timer > 0:
 		anim = "crouch"
 	elif abs(velocity.x) > 0:
