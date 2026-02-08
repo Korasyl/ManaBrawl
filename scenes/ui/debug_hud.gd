@@ -15,10 +15,12 @@ extends Control
 var log_lines: Array[String] = []
 const MAX_LOG_LINES = 3
 
-## Smooth mana bar interpolation
+## Smooth bar interpolation
 var display_mana: float = -1.0  # -1 = uninitialised, snap on first update
 var target_mana: float = 0.0
-const MANA_DRAIN_SPEED: float = 10.0  # Exponential lerp rate
+var display_health: float = -1.0
+var target_health: float = 0.0
+const BAR_LERP_SPEED: float = 10.0  # Exponential lerp rate
 
 func _ready():
 	print("=== DEBUG HUD READY ===")
@@ -29,12 +31,17 @@ func _ready():
 		action_log.text = "[color=yellow]Log initialized[/color]"
 
 func _process(delta):
+	var weight := 1.0 - exp(-BAR_LERP_SPEED * delta)
 	if mana_bar and display_mana >= 0 and display_mana != target_mana:
-		display_mana = lerp(display_mana, target_mana, 1.0 - exp(-MANA_DRAIN_SPEED * delta))
-		# Snap when close to avoid endless micro-updates
+		display_mana = lerp(display_mana, target_mana, weight)
 		if absf(display_mana - target_mana) < 0.5:
 			display_mana = target_mana
 		mana_bar.value = display_mana
+	if health_bar and display_health >= 0 and display_health != target_health:
+		display_health = lerp(display_health, target_health, weight)
+		if absf(display_health - target_health) < 0.5:
+			display_health = target_health
+		health_bar.value = display_health
 
 func update_mana(current: float, max_value: float):
 	mana_label.text = "Mana: %.0f/%.0f" % [current, max_value]
@@ -48,7 +55,10 @@ func update_mana(current: float, max_value: float):
 func update_health(current: float, max_value: float):
 	health_label.text = "Health: %.0f/%.0f" % [current, max_value]
 	health_bar.max_value = max_value
-	health_bar.value = current
+	target_health = current
+	if display_health < 0:
+		display_health = current
+		health_bar.value = current
 
 func update_state(state_text: String):
 	state_label.text = "State: " + state_text
