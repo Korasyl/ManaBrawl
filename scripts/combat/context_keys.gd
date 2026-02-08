@@ -37,6 +37,10 @@ const IS_SHIELD_BREAK := "is_shield_break"
 const DASH_DIRECTION := "dash_direction"
 const DASH_AIRBORNE := "dash_airborne"
 
+# Crouch Boost
+const CROUCH_BOOST_CHARGE_DURATION := "crouch_boost_charge_duration"
+const CROUCH_BOOST_VELOCITY := "crouch_boost_velocity"
+
 # Spell casting (Phase 3)
 const SPELL_DATA := "spell_data"
 const CAST_DIRECTION := "cast_direction"

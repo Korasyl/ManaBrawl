@@ -18,6 +18,8 @@ class_name CharacterStats
 @export var dash_cost: float = 35.0
 @export var wall_jump_cost: float = 10.0
 @export var wall_cling_drain: float = 1.0  # per second
+@export var crouch_boost_cost: float = 25.0
+@export var crouch_boost_velocity: float = -650.0  # Powered jump (normal: -400)
 
 ## Mana Regen
 @export var passive_mana_regen: float = 5.0  # per second
