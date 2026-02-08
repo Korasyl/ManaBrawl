@@ -1310,7 +1310,7 @@ func fire_projectile(mode: RangedModeData):
 	if debug_hud:
 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
 
-func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true) -> Node:
+func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true, check_los: bool = false) -> Node:
 	var mouse_pos := get_global_mouse_position()
 	var nearest: Node = null
 	var nearest_dist := max_range_from_cursor
@@ -1330,11 +1330,14 @@ func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bo
 			continue
 		if not (candidate.has_method("take_damage") or candidate.has_method("apply_healing") or ("status_effects" in candidate)):
 			continue
+		if check_los and not _has_line_of_sight(global_position, candidate.global_position):
+			continue
 		var dist := mouse_pos.distance_to(candidate.global_position)
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = candidate
 
+	# Self always has LOS
 	if allow_self:
 		var self_dist := mouse_pos.distance_to(global_position)
 		if self_dist < nearest_dist:
@@ -1343,7 +1346,8 @@ func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bo
 	return nearest
 
 func _fire_targeted_ranged(mode: RangedModeData) -> bool:
-	var target: Node = _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
+	var los := _get_ranged_requires_los(mode)
+	var target: Node = _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self, los)
 	if target == null:
 		return false
 
@@ -1435,6 +1439,22 @@ func _get_spell_targeted_delivery(spell: SpellData, target: Node = null) -> Stri
 		if target != null:
 			ctx[ContextKeys.TARGET] = target
 		return String(attunements.get_spell_targeted_delivery(base_value, ctx))
+	return base_value
+
+func _get_spell_requires_los(spell: SpellData) -> bool:
+	if spell == null:
+		return true
+	var base_value: bool = spell.requires_line_of_sight
+	if attunements and attunements.has_method("get_line_of_sight"):
+		return bool(attunements.get_line_of_sight(base_value, {ContextKeys.SPELL_DATA: spell}))
+	return base_value
+
+func _get_ranged_requires_los(mode: RangedModeData) -> bool:
+	if mode == null:
+		return true
+	var base_value: bool = mode.requires_line_of_sight
+	if attunements and attunements.has_method("get_line_of_sight"):
+		return bool(attunements.get_line_of_sight(base_value, {}))
 	return base_value
 
 
@@ -1569,7 +1589,8 @@ func handle_channeled_spell(delta: float) -> void:
 		return
 
 	# Only drain mana when we have a valid target to fire at
-	var has_target := _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies) != null
+	var spell_los := _get_spell_requires_los(spell)
+	var has_target := _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies, spell_los) != null
 	if not has_target:
 		# Keep the channel alive but don't drain mana or fire — just wait
 		return
@@ -1608,7 +1629,7 @@ func handle_channeled_spell(delta: float) -> void:
 			_fire_channeled_tick(spell)
 
 func _fire_channeled_tick(spell: SpellData) -> void:
-	var target: Node = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies)
+	var target: Node = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies, _get_spell_requires_los(spell))
 	if target == null:
 		return
 	_fire_targeted_projectile(spell, target)
@@ -1648,7 +1669,7 @@ func cast_spell(index: int):
 	# For targeted spells, require a valid target before resolving cast
 	var target_body: Node = null
 	if spell.cast_type == "targeted":
-		target_body = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies)
+		target_body = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies, _get_spell_requires_los(spell))
 		if target_body == null:
 			if debug_hud:
 				debug_hud.log_action("[color=red]No target found[/color]")
@@ -1815,7 +1836,14 @@ func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.R
 		(entity as SpellEntity).attach_to_target(target as Node2D)
 
 
-func _find_target_near_cursor(include_allies: bool = false, include_enemies: bool = true) -> Node:
+## Returns true if no Layer 1 (World) geometry blocks the path between two points.
+func _has_line_of_sight(from_pos: Vector2, to_pos: Vector2) -> bool:
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(from_pos, to_pos, 1)  # mask=1 → World layer only
+	var result := space.intersect_ray(query)
+	return result.is_empty()
+
+func _find_target_near_cursor(include_allies: bool = false, include_enemies: bool = true, check_los: bool = false) -> Node:
 	var mouse_pos := get_global_mouse_position()
 	var nearest: Node = null
 	var nearest_dist := 200.0  # Max targeting range from cursor
@@ -1823,12 +1851,16 @@ func _find_target_near_cursor(include_allies: bool = false, include_enemies: boo
 	# Search enemies / training dummies
 	if include_enemies:
 		for body in get_tree().get_nodes_in_group("enemy"):
+			if check_los and body is Node2D and not _has_line_of_sight(global_position, body.global_position):
+				continue
 			var dist := mouse_pos.distance_to(body.global_position)
 			if dist < nearest_dist:
 				nearest_dist = dist
 				nearest = body
 
 		for body in get_tree().get_nodes_in_group("training_dummy"):
+			if check_los and body is Node2D and not _has_line_of_sight(global_position, body.global_position):
+				continue
 			var dist := mouse_pos.distance_to(body.global_position)
 			if dist < nearest_dist:
 				nearest_dist = dist
@@ -1836,7 +1868,7 @@ func _find_target_near_cursor(include_allies: bool = false, include_enemies: boo
 
 	# Include allies (other players on same team + self) if the spell allows it
 	if include_allies:
-		# Self-targeting: caster is always a valid ally target
+		# Self-targeting: caster always has LOS to self
 		var self_dist := mouse_pos.distance_to(global_position)
 		if self_dist < nearest_dist:
 			nearest_dist = self_dist
@@ -1846,6 +1878,8 @@ func _find_target_near_cursor(include_allies: bool = false, include_enemies: boo
 			if body == self:
 				continue  # Already handled above
 			if not (body is Node2D):
+				continue
+			if check_los and not _has_line_of_sight(global_position, body.global_position):
 				continue
 			var dist := mouse_pos.distance_to(body.global_position)
 			if dist < nearest_dist:
@@ -2002,7 +2036,8 @@ func _draw():
 		if is_in_ranged_mode:
 			var mode := _get_effective_ranged_mode()
 			if mode.mode_type == "targeted":
-				var target := _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self)
+				var ranged_los := _get_ranged_requires_los(mode)
+				var target := _get_ranged_target_near_cursor(mode.targeted_max_range_from_cursor, mode.targeted_allow_self, ranged_los)
 				if target is Node2D:
 					_draw_target_indicator(target)
 				return
@@ -2018,7 +2053,7 @@ func _draw():
 		if active_spell and active_spell.cast_type == "targeted":
 			var delivery := _get_spell_targeted_delivery(active_spell)
 			if delivery == "apply_at_target":
-				var target := _find_target_near_cursor(active_spell.can_target_allies, active_spell.can_target_enemies)
+				var target := _find_target_near_cursor(active_spell.can_target_allies, active_spell.can_target_enemies, _get_spell_requires_los(active_spell))
 				if target is Node2D:
 					_draw_target_indicator(target, active_spell.projectile_color)
 				return

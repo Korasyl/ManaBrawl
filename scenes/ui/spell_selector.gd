@@ -299,6 +299,9 @@ func _build_tooltip_text(spell: SpellData) -> String:
 	elif not spell.can_target_allies and spell.can_target_enemies:
 		pass  # Default — enemies only, no need to call it out
 
+	if not spell.requires_line_of_sight:
+		lines.append("[color=violet]No line of sight required[/color]")
+
 	# Core stats
 	lines.append("[color=dodgerblue]Mana:[/color] %.0f" % spell.mana_cost)
 	lines.append("[color=goldenrod]Cooldown:[/color] %.1fs" % spell.cooldown)

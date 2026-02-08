@@ -24,6 +24,7 @@ class_name SpellData
 @export var targeted_homing_turn_speed: float = 8.0  # radians per second
 @export var can_target_allies: bool = false
 @export var can_target_enemies: bool = true
+@export var requires_line_of_sight: bool = true
 
 ## Heal amount (for ally-targeted spells; 0 = not a heal)
 @export var heal_amount: float = 0.0

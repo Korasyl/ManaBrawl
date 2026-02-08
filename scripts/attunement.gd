@@ -20,6 +20,7 @@ class_name Attunement
 @export var spell_channel_projectiles_mult: float = 1.0
 @export_enum("unchanged", "projectile", "apply_at_target") var forced_targeted_delivery: String = "unchanged"
 @export_enum("unchanged", "false", "true") var forced_channeled: String = "unchanged"
+@export_enum("unchanged", "false", "true") var forced_line_of_sight: String = "unchanged"
 
 
 # Per-action overrides (optional, scalable, future-proof)
@@ -72,6 +73,13 @@ func override_spell_channeled(_player: Node, base_channeled: bool, _ctx: Diction
 	if forced_channeled == "unchanged":
 		return base_channeled
 	return forced_channeled == "true"
+
+## Optional override for line-of-sight requirement.
+## An attunement with forced_line_of_sight = "false" removes the LOS restriction.
+func override_line_of_sight(_player: Node, base_los: bool, _ctx: Dictionary = {}) -> bool:
+	if forced_line_of_sight == "unchanged":
+		return base_los
+	return forced_line_of_sight == "true"
 
 
 # --- Event hooks (optional) ---
