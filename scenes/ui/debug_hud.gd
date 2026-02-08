@@ -15,6 +15,11 @@ extends Control
 var log_lines: Array[String] = []
 const MAX_LOG_LINES = 3
 
+## Smooth mana bar interpolation
+var display_mana: float = -1.0  # -1 = uninitialised, snap on first update
+var target_mana: float = 0.0
+const MANA_DRAIN_SPEED: float = 10.0  # Exponential lerp rate
+
 func _ready():
 	print("=== DEBUG HUD READY ===")
 	print("Mana Label: ", mana_label)
@@ -23,10 +28,22 @@ func _ready():
 		print("Action Log class: ", action_log.get_class())
 		action_log.text = "[color=yellow]Log initialized[/color]"
 
+func _process(delta):
+	if mana_bar and display_mana >= 0 and display_mana != target_mana:
+		display_mana = lerp(display_mana, target_mana, 1.0 - exp(-MANA_DRAIN_SPEED * delta))
+		# Snap when close to avoid endless micro-updates
+		if absf(display_mana - target_mana) < 0.5:
+			display_mana = target_mana
+		mana_bar.value = display_mana
+
 func update_mana(current: float, max_value: float):
 	mana_label.text = "Mana: %.0f/%.0f" % [current, max_value]
 	mana_bar.max_value = max_value
-	mana_bar.value = current
+	target_mana = current
+	if display_mana < 0:
+		# First call — snap immediately so the bar doesn't animate from zero
+		display_mana = current
+		mana_bar.value = current
 
 func update_health(current: float, max_value: float):
 	health_label.text = "Health: %.0f/%.0f" % [current, max_value]
