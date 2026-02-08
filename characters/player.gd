@@ -44,7 +44,10 @@ var is_dashing: bool = false
 var dash_timer: float = 0.0
 var dash_cooldown_timer: float = 0.0
 var dash_direction: Vector2 = Vector2.ZERO
-var air_speed: float = 0.0  # Speed we had when leaving ground
+var air_speed_cap: float = 0.0  # Max horizontal speed while airborne (set on liftoff)
+var coyote_timer: float = 0.0  # Grace period after walking off a ledge
+var was_on_floor: bool = true  # Floor state from previous frame
+var just_jumped: bool = false  # Prevents coyote activation after intentional jumps
 var is_on_wall_left: bool = false
 var is_on_wall_right: bool = false
 var is_wall_sliding: bool = false
@@ -262,17 +265,31 @@ func _physics_process(delta):
 	if not is_on_floor() and not is_dashing and not is_coalescing:
 		velocity.y += gravity * delta
 
-	# Reset double jump when landing
-	if is_on_floor():
+	# --- Coyote time & landing reset ---
+	var on_floor_now := is_on_floor()
+
+	if on_floor_now:
 		can_double_jump = true
 		wall_jump_lock_timer = 0.0
+		coyote_timer = 0.0
+		just_jumped = false
+	elif was_on_floor and not just_jumped:
+		# Just walked off a ledge — start coyote window
+		coyote_timer = movement_data.coyote_time if movement_data else 0.12
+		# Snapshot current ground speed as air cap
+		air_speed_cap = abs(velocity.x) if abs(velocity.x) > 0 else stats.walk_speed
+
+	if coyote_timer > 0:
+		coyote_timer -= delta
+
+	was_on_floor = on_floor_now
 
 	# --- Stunned or CC'd: no actions, just slide to a stop ---
 	var is_stunned := is_flinched or is_staggered
 	var is_cc := status_effects.is_grabbed() if status_effects else false
 	if is_stunned or is_cc:
 		if is_on_floor():
-			velocity.x = lerp(velocity.x, 0.0, 0.15)
+			velocity.x = move_toward(velocity.x, 0.0, movement_data.ground_deceleration * delta)
 		if is_cc:
 			velocity = Vector2.ZERO
 		move_and_slide()
@@ -314,14 +331,13 @@ func _physics_process(delta):
 	queue_redraw()
 
 func handle_movement(delta):
-	# Get input direction
 	var input_dir = Input.get_axis("move_left", "move_right")
+	var on_ground := is_on_floor()
 
-	# Determine speed based on state
-	var target_speed = 0.0
+	# --- Determine target speed based on state ---
+	var target_speed := 0.0
 
-	if is_on_floor():
-		# ON GROUND: Check input for speed
+	if on_ground:
 		if input_dir != 0:
 			is_crouching = Input.is_action_pressed("crouch")
 			is_sprinting = Input.is_action_pressed("sprint") and not is_crouching
@@ -333,47 +349,58 @@ func handle_movement(delta):
 			else:
 				target_speed = stats.walk_speed
 
-		# Store this speed for when we go airborne
-		air_speed = target_speed
+		# Snapshot speed for air cap whenever we're grounded
+		air_speed_cap = target_speed if target_speed > 0 else stats.walk_speed
 	else:
-		# IN AIR: Use stored air speed, but allow control if it's zero
+		# Airborne: steer toward air_speed_cap (or walk speed if jumped from standstill)
 		if input_dir != 0:
-			if air_speed > 0:
-				# Use the speed we had when we left ground
-				target_speed = air_speed
-			else:
-				# If we jumped from standing still, allow walk-speed air control
-				target_speed = stats.walk_speed
+			target_speed = air_speed_cap if air_speed_cap > 0 else stats.walk_speed
 
-	# Block movement penalty (GDD: significantly slows movement)
+	# --- Speed modifiers (apply to both ground and air target) ---
 	if is_blocking:
 		target_speed = stats.block_move_speed
 
-	# Ranged mode movement penalty
 	if is_in_ranged_mode:
 		var mode := _get_effective_ranged_mode()
 		target_speed *= mode.move_speed_mult
 
-	# Toggle spell speed modifiers
 	for i in 4:
 		if active_toggles[i] and i < spell_slots.size() and spell_slots[i] != null:
 			target_speed *= spell_slots[i].slow_move
 
-	# Apply attunement move speed multiplier
 	if attunements:
 		target_speed *= attunements.get_move_speed_mult()
 
-	# Apply status effect speed modifiers
 	if status_effects:
 		target_speed *= status_effects.get_speed_mult()
 
-	# Apply horizontal movement
-	velocity.x = input_dir * target_speed
+	# --- Apply horizontal movement with acceleration ---
+	var desired_vx := input_dir * target_speed
 
-	# Jump
+	if on_ground:
+		if input_dir != 0:
+			velocity.x = move_toward(velocity.x, desired_vx, movement_data.ground_acceleration * delta)
+		else:
+			velocity.x = move_toward(velocity.x, 0.0, movement_data.ground_deceleration * delta)
+	else:
+		if input_dir != 0:
+			velocity.x = move_toward(velocity.x, desired_vx, movement_data.air_acceleration * delta)
+			# Clamp to air speed cap so we don't accelerate beyond our liftoff speed
+			var cap := air_speed_cap if air_speed_cap > 0 else stats.walk_speed
+			velocity.x = clampf(velocity.x, -cap, cap)
+		else:
+			velocity.x = move_toward(velocity.x, 0.0, movement_data.air_deceleration * delta)
+
+	# --- Jump (with coyote time) ---
 	if Input.is_action_just_pressed("jump"):
-		if is_on_floor():
+		var can_ground_jump := on_ground or coyote_timer > 0
+		if can_ground_jump:
 			velocity.y = stats.jump_velocity
+			just_jumped = true
+			coyote_timer = 0.0
+			# Snapshot air cap at moment of jump if grounded speed is valid
+			if on_ground and abs(velocity.x) > 0:
+				air_speed_cap = abs(velocity.x)
 		elif can_double_jump and movement_data.can_double_jump:
 			var spent := use_mana(stats.double_jump_cost, "double_jump")
 			if spent > 0.0:
@@ -488,7 +515,7 @@ func update_hud():
 		state = "Sprinting"
 	elif is_crouching:
 		state = "Crouching"
-	elif velocity.x != 0:
+	elif abs(velocity.x) > 5.0:
 		state = "Walking"
 	
 	debug_hud.update_state(state)
@@ -530,6 +557,11 @@ func handle_dash():
 
 		# Apply dash velocity
 		velocity = dash_direction * movement_data.dash_distance / movement_data.dash_duration
+
+		# Air dash: update cap so post-dash air control matches walk speed
+		if not is_on_floor():
+			air_speed_cap = maxf(air_speed_cap, stats.walk_speed)
+			just_jumped = true  # Prevent coyote from triggering
 
 		# Log it with the true cost
 		if debug_hud:
@@ -581,6 +613,8 @@ func handle_wall_mechanics(delta):
 
 				wall_jump_lock_timer = 0.2
 				can_double_jump = true
+				air_speed_cap = movement_data.wall_jump_horizontal_boost
+				just_jumped = true
 
 				is_wall_sliding = false
 				is_wall_clinging = false
