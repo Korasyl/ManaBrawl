@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/spells/earthen_wall.gd" id="1_ew"]
+[ext_resource type="Script" path="res://scripts/spells/barrier_body.gd" id="2_body"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(200, 20)
+
+[node name="EarthenWall" type="Node2D"]
+script = ExtResource("1_ew")
+max_lifetime = 6.0
+max_hp = 100.0
+
+[node name="WallBody" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("2_body")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallBody"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="ColorRect" type="ColorRect" parent="WallBody"]
+offset_left = -100.0
+offset_top = -10.0
+offset_right = 100.0
+offset_bottom = 10.0
+color = Color(0.55, 0.4, 0.25, 0.7)

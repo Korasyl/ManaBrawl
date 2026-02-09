@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/clarity_burst.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Clarity Burst"
+description = "Instantly restore 50 mana to a target ally. Enables big plays as a battery support."
+mana_cost = 40.0
+cooldown = 25.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.3, 0.5, 1, 1)
+targeted_delivery = "apply_at_target"
+can_target_allies = true
+can_target_enemies = false
+slow_move = 1.0
+toggle_mana_drain = 0.0

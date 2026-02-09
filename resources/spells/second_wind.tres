@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Second Wind"
+description = "Toggle: when activated, rapidly converts mana into a regenerative shield. Desperate save button that trades resources for survival."
+mana_cost = 30.0
+cooldown = 30.0
+cast_type = "toggled"
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(1, 0.9, 0.5, 1)
+slow_move = 0.8
+toggle_mana_drain = 15.0

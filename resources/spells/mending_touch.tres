@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/mending_touch.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Mending Touch"
+description = "Sends a healing projectile toward an ally, restoring 40 HP on arrival. Bread-and-butter sustain."
+mana_cost = 35.0
+cooldown = 8.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 450.0
+projectile_color = Color(0.3, 1, 0.5, 1)
+targeted_delivery = "projectile"
+can_target_allies = true
+can_target_enemies = false
+heal_amount = 40.0
+slow_move = 1.0
+toggle_mana_drain = 0.0

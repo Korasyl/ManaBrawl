@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/sanctified_ground.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Sanctified Ground"
+description = "Creates a blessed zone that heals allies for 5 HP/sec and grants increased movement speed. Lasts 8s. Area control that rewards positioning."
+mana_cost = 45.0
+cooldown = 20.0
+cast_type = "placement"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.4, 1, 0.6, 1)
+heal_amount = 5.0
+placement_preview_size = Vector2(120, 120)
+placement_preview_color = Color(0.4, 1, 0.6, 0.2)
+placement_preview_outline_color = Color(0.4, 1, 0.6, 0.7)
+slow_move = 1.0
+toggle_mana_drain = 0.0

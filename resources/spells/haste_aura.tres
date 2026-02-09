@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Haste Aura"
+description = "Toggle: you and nearby allies gain +30% movement speed while active. Drains mana per second. Team-wide mobility buff."
+mana_cost = 20.0
+cooldown = 2.0
+cast_type = "toggled"
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.3, 1, 0.8, 1)
+slow_move = 1.3
+toggle_mana_drain = 10.0

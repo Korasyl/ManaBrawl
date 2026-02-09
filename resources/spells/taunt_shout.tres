@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/taunt_shout.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Taunt Shout"
+description = "Enemies in a frontal cone are marked. If they attack anyone but you in the next 4s, they take 15 damage. Forces tough decisions."
+mana_cost = 30.0
+cooldown = 15.0
+cast_type = "free_aim"
+spell_scene = ExtResource("2_scene")
+damage = 15.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(1, 0.5, 0.2, 1)
+slow_move = 1.0
+toggle_mana_drain = 0.0

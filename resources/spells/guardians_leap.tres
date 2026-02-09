@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/guardians_leap.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Guardian's Leap"
+description = "Dash to an ally and grant them a temporary shield worth 50 HP for 4s. Supportive tank play with mobility."
+mana_cost = 40.0
+cooldown = 10.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.3, 0.8, 1, 1)
+targeted_delivery = "apply_at_target"
+can_target_allies = true
+can_target_enemies = false
+heal_amount = 50.0
+slow_move = 1.0
+toggle_mana_drain = 0.0
