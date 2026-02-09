@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
 [ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/spell_selector.tscn" id="8_spsel"]
+[ext_resource type="PackedScene" path="res://characters/ai_opponent.tscn" id="9_aiopp"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ai_strategy_selector.tscn" id="10_aisel"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -96,3 +98,13 @@ offset_top = -174.0
 offset_right = -375.0
 offset_bottom = -174.0
 player_path = NodePath("../Player")
+
+[node name="AIOpponent" parent="." groups=["ai_opponent", "enemy"] instance=ExtResource("9_aiopp")]
+position = Vector2(-200, 409)
+
+[node name="AIStrategySelector" parent="." instance=ExtResource("10_aisel")]
+offset_left = -660.0
+offset_top = 87.0
+offset_right = -660.0
+offset_bottom = 87.0
+opponent_path = NodePath("../AIOpponent")

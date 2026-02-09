@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="AIStrategy" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_strategy.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+strategy_name = "Defensive"
+description = "Prioritizes spacing, blocking, zone control. Coalescences behind barriers for safety."
+aggression = 0.2
+defensiveness = 0.8
+spell_preference = 0.7
+preferred_melee_range = 120.0
+preferred_spell_range = 300.0
+too_close_distance = 80.0
+chase_max_distance = 350.0
+coalesce_mana_threshold = 0.4
+retreat_health_threshold = 0.35
+aggressive_health_threshold = 0.8
+spell_mana_reserve = 0.25
+decision_interval = 0.3
+reaction_delay = 0.05
+block_chance = 0.7
+dodge_chance = 0.5
+spell_priority = [1, 2, 0, 3]
+placement_defensiveness = 0.8
