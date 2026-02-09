@@ -2,14 +2,12 @@
 
 [ext_resource type="PackedScene" uid="uid://dcbx80h6k7knp" path="res://characters/player.tscn" id="1_ddmv8"]
 [ext_resource type="PackedScene" uid="uid://s6a2lintyjyi" path="res://scenes/ui/debug_hud.tscn" id="2_al67s"]
-[ext_resource type="PackedScene" uid="uid://ct6vw7jdaxb6i" path="res://characters/training_dummy.tscn" id="3_gul7h"]
 [ext_resource type="PackedScene" uid="uid://gn3trux6bfkf" path="res://scenes/ui/stats_switcher.tscn" id="4_fnpii"]
 [ext_resource type="Script" uid="uid://e8o28f46ys1y" path="res://scenes/ui/stats_switcher.gd" id="5_14n3e"]
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
-[ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/spell_selector.tscn" id="8_spsel"]
 [ext_resource type="Script" uid="uid://0amifnjysv4v" path="res://scripts/dynamic_camera.gd" id="9_dyncam"]
-[ext_resource type="PackedScene" path="res://characters/ai_opponent.tscn" id="10_aiopp"]
+[ext_resource type="PackedScene" uid="uid://bsrsyl6f5kw28" path="res://characters/ai_opponent.tscn" id="10_aiopp"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ai_strategy_selector.tscn" id="11_aisel"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
@@ -122,10 +120,6 @@ offset_right = 40.0
 offset_bottom = 7.5
 color = Color(0.3, 0.25, 0.15, 1)
 
-[node name="TrainingDummy" parent="." unique_id=975334861 groups=["training_dummy"] instance=ExtResource("3_gul7h")]
-position = Vector2(230, 409)
-collision_mask = 1
-
 [node name="UILayer" type="CanvasLayer" parent="." unique_id=123555840]
 
 [node name="AttunementSelector" parent="UILayer" unique_id=1982629802 instance=ExtResource("6_tskly")]
@@ -145,24 +139,18 @@ offset_right = 210.0
 offset_bottom = 131.0
 script = ExtResource("5_14n3e")
 
-[node name="DummyBehaviorSelector" parent="UILayer" unique_id=1977472266 instance=ExtResource("7_bhvr")]
-offset_left = 209.0
-offset_top = 206.0
-offset_right = 209.0
-offset_bottom = 206.0
-
 [node name="SpellSelector" parent="UILayer" unique_id=1739705035 instance=ExtResource("8_spsel")]
 offset_left = 322.0
 offset_top = 261.0
 offset_right = 322.0
 offset_bottom = 261.0
 
-[node name="AIStrategySelector" parent="UILayer" instance=ExtResource("11_aisel")]
-offset_left = 209.0
-offset_top = 276.0
-offset_right = 209.0
-offset_bottom = 276.0
+[node name="AIStrategySelector" parent="UILayer" unique_id=1243588824 instance=ExtResource("11_aisel")]
+offset_left = 487.0
+offset_top = 10.0
+offset_right = 487.0
+offset_bottom = 10.0
 opponent_path = NodePath("../../AIOpponent")
 
-[node name="AIOpponent" parent="." groups=["ai_opponent", "enemy"] instance=ExtResource("10_aiopp")]
+[node name="AIOpponent" parent="." unique_id=1100357976 groups=["ai_opponent", "enemy"] instance=ExtResource("10_aiopp")]
 position = Vector2(-200, 409)

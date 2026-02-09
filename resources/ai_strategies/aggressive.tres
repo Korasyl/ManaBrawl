@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="AIStrategy" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="AIStrategy" format=3 uid="uid://c1ow024jxby7t"]
 
-[ext_resource type="Script" path="res://scripts/ai/ai_strategy.gd" id="1"]
+[ext_resource type="Script" uid="uid://bplmaudoaebdk" path="res://scripts/ai/ai_strategy.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -9,7 +9,6 @@ description = "Prioritizes closing distance, combo pressure, and mana-for-damage
 aggression = 0.8
 defensiveness = 0.2
 spell_preference = 0.3
-preferred_melee_range = 80.0
 preferred_spell_range = 200.0
 too_close_distance = 30.0
 chase_max_distance = 500.0
@@ -21,5 +20,5 @@ decision_interval = 0.25
 reaction_delay = 0.08
 block_chance = 0.2
 dodge_chance = 0.4
-spell_priority = [0, 3, 1, 2]
+spell_priority = Array[int]([0, 3, 1, 2])
 placement_defensiveness = 0.2

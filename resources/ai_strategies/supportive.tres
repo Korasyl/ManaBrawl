@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="AIStrategy" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="AIStrategy" format=3 uid="uid://buxlhtuskjx4f"]
 
-[ext_resource type="Script" path="res://scripts/ai/ai_strategy.gd" id="1"]
+[ext_resource type="Script" uid="uid://bplmaudoaebdk" path="res://scripts/ai/ai_strategy.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -10,16 +10,10 @@ aggression = 0.4
 defensiveness = 0.6
 spell_preference = 0.6
 preferred_melee_range = 100.0
-preferred_spell_range = 250.0
 too_close_distance = 60.0
-chase_max_distance = 400.0
 coalesce_mana_threshold = 0.35
 retreat_health_threshold = 0.3
 aggressive_health_threshold = 0.7
-spell_mana_reserve = 0.2
-decision_interval = 0.3
-reaction_delay = 0.1
 block_chance = 0.4
 dodge_chance = 0.35
-spell_priority = [2, 0, 3, 1]
-placement_defensiveness = 0.5
+spell_priority = Array[int]([2, 0, 3, 1])

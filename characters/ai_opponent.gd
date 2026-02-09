@@ -1110,7 +1110,7 @@ func _start_coalescing():
 	is_coalescing = true
 	coalescence_startup_timer = 1.0
 	velocity = Vector2.ZERO
-	coalesce_duration_target = 2.0 + randf() * 2.0  # Coalesce 2-4 seconds
+	coalesce_duration_target = 5.0 + randf() * 2.0  # Coalesce 5-10 seconds
 	_log_action("[color=aqua]AI Coalescing...[/color]")
 
 func _stop_coalescing():
@@ -1447,7 +1447,7 @@ func _draw():
 
 	# Behavior indicator
 	var behavior_text: String = String(AIBehavior.keys()[current_behavior])
-	draw_string(ThemeDB.fallback_font, Vector2(-30, -100), behavior_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 10, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(-30, -90), behavior_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 10, Color.WHITE)
 
 # ===========================================================================
 #  PUBLIC API — for strategy switching from UI
