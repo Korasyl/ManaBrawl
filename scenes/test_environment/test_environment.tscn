@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
 [ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/spell_selector.tscn" id="8_spsel"]
+[ext_resource type="Script" path="res://scripts/dynamic_camera.gd" id="9_dyncam"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -15,9 +16,17 @@ size = Vector2(1000, 50)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gul7h"]
 size = Vector2(50, 400)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(200, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_steps"]
+size = Vector2(80, 15)
+
 [node name="TestEnvironment" type="Node2D" unique_id=101179795]
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1331215601]
+script = ExtResource("9_dyncam")
+target_path = NodePath("../Player")
 
 [node name="Floor" type="StaticBody2D" parent="." unique_id=1444636424]
 position = Vector2(0, 500)
@@ -59,40 +68,91 @@ offset_top = -200.0
 offset_right = 25.0
 offset_bottom = 200.0
 
+[node name="Platform" type="StaticBody2D" parent="."]
+position = Vector2(-150, 350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="ColorRect" type="ColorRect" parent="Platform"]
+offset_left = -100.0
+offset_top = -15.0
+offset_right = 100.0
+offset_bottom = 15.0
+color = Color(0.35, 0.30, 0.18, 1)
+
+[node name="StairStep1" type="StaticBody2D" parent="."]
+position = Vector2(150, 470)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep1"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep1"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
+
+[node name="StairStep2" type="StaticBody2D" parent="."]
+position = Vector2(150, 450)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep2"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep2"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
+
+[node name="StairStep3" type="StaticBody2D" parent="."]
+position = Vector2(150, 430)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep3"]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep3"]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.30, 0.25, 0.15, 1)
+
 [node name="TrainingDummy" parent="." unique_id=975334861 groups=["training_dummy"] instance=ExtResource("3_gul7h")]
 position = Vector2(230, 409)
 collision_mask = 1
 
-[node name="AttunementSelector" parent="." unique_id=1982629802 instance=ExtResource("6_tskly")]
-offset_left = -852.0
-offset_top = -68.0
-offset_right = -852.0
-offset_bottom = -68.0
+[node name="UILayer" type="CanvasLayer" parent="."]
 
-[node name="DebugHUD" parent="." unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
-offset_left = -868.0
-offset_top = 80.0
-offset_right = -868.0
-offset_bottom = 80.0
+[node name="AttunementSelector" parent="UILayer" unique_id=1982629802 instance=ExtResource("6_tskly")]
+offset_left = 108.0
+offset_top = 472.0
+offset_right = 108.0
+offset_bottom = 472.0
 
-[node name="StatsSwitcher" parent="." unique_id=1730580019 instance=ExtResource("4_fnpii")]
-offset_left = -660.0
-offset_top = -50.0
-offset_right = -660.0
-offset_bottom = -50.0
+[node name="DebugHUD" parent="UILayer" unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
+offset_left = 92.0
+offset_top = 620.0
+offset_right = 92.0
+offset_bottom = 620.0
+
+[node name="StatsSwitcher" parent="UILayer" unique_id=1730580019 instance=ExtResource("4_fnpii")]
+offset_left = 300.0
+offset_top = 490.0
+offset_right = 300.0
+offset_bottom = 490.0
 script = ExtResource("5_14n3e")
-player_path = NodePath("../Player")
 
-[node name="DummyBehaviorSelector" parent="." unique_id=1977472266 instance=ExtResource("7_bhvr")]
-offset_left = -660.0
-offset_top = 27.0
-offset_right = -660.0
-offset_bottom = 27.0
-dummy_path = NodePath("../TrainingDummy")
+[node name="DummyBehaviorSelector" parent="UILayer" unique_id=1977472266 instance=ExtResource("7_bhvr")]
+offset_left = 300.0
+offset_top = 567.0
+offset_right = 300.0
+offset_bottom = 567.0
 
-[node name="SpellSelector" parent="." unique_id=1739705035 instance=ExtResource("8_spsel")]
-offset_left = -375.0
-offset_top = -174.0
-offset_right = -375.0
-offset_bottom = -174.0
-player_path = NodePath("../Player")
+[node name="SpellSelector" parent="UILayer" unique_id=1739705035 instance=ExtResource("8_spsel")]
+offset_left = 585.0
+offset_top = 366.0
+offset_right = 585.0
+offset_bottom = 366.0
