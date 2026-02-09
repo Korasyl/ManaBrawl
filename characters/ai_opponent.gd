@@ -318,9 +318,9 @@ func _evaluate_behavior():
 		current_behavior = AIBehavior.IDLE
 		return
 
-	var dist := global_position.distance_to(target.global_position)
-	var health_pct := current_health / max(1.0, stats.max_health)
-	var mana_pct := current_mana / max(1.0, stats.max_mana)
+	var dist: float = global_position.distance_to(target.global_position)
+	var health_pct: float = current_health / maxf(1.0, stats.max_health)
+	var mana_pct: float = current_mana / maxf(1.0, stats.max_mana)
 	var strat := _get_strategy()
 
 	# --- Priority 1: Recovery when low resources ---
@@ -418,8 +418,8 @@ func _do_approach(delta):
 	if is_dashing or is_attacking:
 		return
 
-	var dir := sign(target.global_position.x - global_position.x)
-	var dist := abs(target.global_position.x - global_position.x)
+	var dir: float = signf(target.global_position.x - global_position.x)
+	var dist: float = absf(target.global_position.x - global_position.x)
 	var strat := _get_strategy()
 
 	# Sprint if far away
@@ -459,8 +459,8 @@ func _do_engage_melee(delta):
 	if is_dashing:
 		return
 
-	var dist := abs(target.global_position.x - global_position.x)
-	var dir := sign(target.global_position.x - global_position.x)
+	var dist: float = absf(target.global_position.x - global_position.x)
+	var dir: float = signf(target.global_position.x - global_position.x)
 	var strat := _get_strategy()
 
 	# Close in to melee range
@@ -503,8 +503,8 @@ func _do_engage_spell(delta):
 	if is_dashing or is_attacking:
 		return
 
-	var dist := abs(target.global_position.x - global_position.x)
-	var dir := sign(target.global_position.x - global_position.x)
+	var dist: float = absf(target.global_position.x - global_position.x)
+	var dir: float = signf(target.global_position.x - global_position.x)
 	var strat := _get_strategy()
 
 	# Maintain spell range — back off if too close, close in if too far
@@ -530,8 +530,8 @@ func _do_retreat(delta):
 	if is_dashing:
 		return
 
-	var dir := sign(target.global_position.x - global_position.x)
-	var dist := abs(target.global_position.x - global_position.x)
+	var dir: float = signf(target.global_position.x - global_position.x)
+	var dist: float = absf(target.global_position.x - global_position.x)
 	var strat := _get_strategy()
 
 	is_blocking = false
@@ -565,7 +565,7 @@ func _do_recover(delta):
 	if is_dashing:
 		return
 
-	var dist := abs(target.global_position.x - global_position.x) if target and is_instance_valid(target) else 999.0
+	var dist: float = absf(target.global_position.x - global_position.x) if target and is_instance_valid(target) else 999.0
 
 	# Start coalescing if safe
 	if not is_coalescing and coalescence_recovery_timer <= 0 and dist > 120.0:
@@ -579,7 +579,7 @@ func _do_recover(delta):
 
 	# Move away while recovering
 	if target and is_instance_valid(target):
-		var dir := sign(target.global_position.x - global_position.x)
+		var dir: float = signf(target.global_position.x - global_position.x)
 		if not is_coalescing:
 			velocity.x = move_toward(velocity.x, -dir * stats.walk_speed * 0.5, movement_data.ground_acceleration * delta)
 
@@ -852,7 +852,7 @@ func _on_melee_hitbox_body_entered(hit_body):
 
 func _pick_best_spell() -> int:
 	var strat := _get_strategy()
-	var mana_pct := current_mana / max(1.0, stats.max_mana)
+	var mana_pct: float = current_mana / maxf(1.0, stats.max_mana)
 
 	for idx in strat.spell_priority:
 		if idx < 0 or idx >= spell_slots.size() or spell_slots[idx] == null:
@@ -905,9 +905,9 @@ func _fire_spell_free_aim(spell: SpellData):
 	if target == null or not is_instance_valid(target):
 		return
 
-	var dir := (target.global_position - global_position).normalized()
+	var dir: Vector2 = (target.global_position - global_position).normalized()
 	# Add slight inaccuracy based on difficulty
-	var inaccuracy := (1.0 - _get_strategy().aggression) * 0.15
+	var inaccuracy: float = (1.0 - _get_strategy().aggression) * 0.15
 	dir = dir.rotated(randf_range(-inaccuracy, inaccuracy))
 
 	var spell_ctx := {
@@ -1014,7 +1014,7 @@ func _place_spell(spell: SpellData):
 		return
 
 	var strat := _get_strategy()
-	var dir_to_target := sign(target.global_position.x - global_position.x)
+	var dir_to_target: float = signf(target.global_position.x - global_position.x)
 
 	# Strategy-driven placement position
 	var place_pos: Vector2
@@ -1435,7 +1435,7 @@ func _draw():
 	draw_line(Vector2(0, -40), arrow_end, Color.YELLOW, 3.0)
 
 	# Behavior indicator
-	var behavior_text := AIBehavior.keys()[current_behavior]
+	var behavior_text: String = String(AIBehavior.keys()[current_behavior])
 	draw_string(ThemeDB.fallback_font, Vector2(-30, -100), behavior_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 10, Color.WHITE)
 
 # ===========================================================================
@@ -1450,8 +1450,8 @@ func set_strategy(new_strategy: AIStrategy) -> void:
 func set_character_stats(new_stats: CharacterStats) -> void:
 	if new_stats == null:
 		return
-	var health_ratio := current_health / max(1.0, stats.max_health) if stats else 1.0
-	var mana_ratio := current_mana / max(1.0, stats.max_mana) if stats else 1.0
+	var health_ratio: float = current_health / maxf(1.0, stats.max_health) if stats else 1.0
+	var mana_ratio: float = current_mana / maxf(1.0, stats.max_mana) if stats else 1.0
 	stats = new_stats
 	current_health = clamp(stats.max_health * health_ratio, 0.0, stats.max_health)
 	current_mana = clamp(stats.max_mana * mana_ratio, 0.0, stats.max_mana)
