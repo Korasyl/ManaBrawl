@@ -30,6 +30,11 @@ func _ready():
 		print("Action Log class: ", action_log.get_class())
 		action_log.text = "[color=yellow]Log initialized[/color]"
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_debug_hud"):
+		visible = not visible
+		get_viewport().set_input_as_handled()
+
 func _process(delta):
 	var weight := 1.0 - exp(-BAR_LERP_SPEED * delta)
 	if mana_bar and display_mana >= 0 and display_mana != target_mana:

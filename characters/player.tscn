@@ -4,8 +4,9 @@
 [ext_resource type="Resource" uid="uid://bxedo12ho0f4l" path="res://resources/character_stats/default_character_stats.tres" id="2_tory2"]
 [ext_resource type="Resource" uid="uid://cfo4tr01pkeup" path="res://resources/movement_data/default_movement_data.tres" id="3_x0jl3"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_6p3mc"]
-size = Vector2(40, 60)
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_6p3mc"]
+radius = 20.0
+height = 60.0
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_tory2"]
 animations = [{
@@ -63,6 +64,16 @@ animations = [{
 "loop": true,
 "name": &"wall_slide",
 "speed": 5.0
+}, {
+"frames": [],
+"loop": false,
+"name": &"ledge_grab",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": false,
+"name": &"ledge_clamber",
+"speed": 5.0
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tory2"]
@@ -83,7 +94,7 @@ color = Color(0.25882354, 1, 1, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1751050265]
 position = Vector2(0, -30)
-shape = SubResource("RectangleShape2D_6p3mc")
+shape = SubResource("CapsuleShape2D_6p3mc")
 
 [node name="WallCheckLeft" type="RayCast2D" parent="." unique_id=1597379337]
 position = Vector2(-20, -30)
@@ -92,6 +103,22 @@ target_position = Vector2(-5, 0)
 [node name="WallCheckRight" type="RayCast2D" parent="." unique_id=799728801]
 position = Vector2(20, -30)
 target_position = Vector2(5, 0)
+
+[node name="LedgeCheckLeft" type="RayCast2D" parent="."]
+position = Vector2(-28, -65)
+target_position = Vector2(0, 10)
+
+[node name="LedgeCheckRight" type="RayCast2D" parent="."]
+position = Vector2(28, -65)
+target_position = Vector2(0, 10)
+
+[node name="LedgeAboveCheckLeft" type="RayCast2D" parent="."]
+position = Vector2(-28, -70)
+target_position = Vector2(0, -5)
+
+[node name="LedgeAboveCheckRight" type="RayCast2D" parent="."]
+position = Vector2(28, -70)
+target_position = Vector2(0, -5)
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=232779460]
 sprite_frames = SubResource("SpriteFrames_tory2")

@@ -26,3 +26,7 @@ class_name MovementData
 ## Wall Properties
 @export var wall_slide_speed: float = 100.0
 @export var wall_jump_horizontal_boost: float = 300.0
+
+## Ledge Grab Properties
+@export var can_ledge_grab: bool = true
+@export var ledge_grab_min_fall_speed: float = 0.0  # Minimum downward velocity to grab (0 = always)

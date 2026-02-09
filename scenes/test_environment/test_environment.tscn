@@ -8,8 +8,9 @@
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
 [ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="7_bhvr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/spell_selector.tscn" id="8_spsel"]
-[ext_resource type="PackedScene" path="res://characters/ai_opponent.tscn" id="9_aiopp"]
-[ext_resource type="PackedScene" path="res://scenes/ui/ai_strategy_selector.tscn" id="10_aisel"]
+[ext_resource type="Script" uid="uid://0amifnjysv4v" path="res://scripts/dynamic_camera.gd" id="9_dyncam"]
+[ext_resource type="PackedScene" path="res://characters/ai_opponent.tscn" id="10_aiopp"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ai_strategy_selector.tscn" id="11_aisel"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -17,9 +18,17 @@ size = Vector2(1000, 50)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gul7h"]
 size = Vector2(50, 400)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_platform"]
+size = Vector2(200, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_steps"]
+size = Vector2(80, 15)
+
 [node name="TestEnvironment" type="Node2D" unique_id=101179795]
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1331215601]
+script = ExtResource("9_dyncam")
+target_path = NodePath("../Player")
 
 [node name="Floor" type="StaticBody2D" parent="." unique_id=1444636424]
 position = Vector2(0, 500)
@@ -61,50 +70,99 @@ offset_top = -200.0
 offset_right = 25.0
 offset_bottom = 200.0
 
+[node name="Platform" type="StaticBody2D" parent="." unique_id=2098394058]
+position = Vector2(-150, 350)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform" unique_id=1717935270]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="ColorRect" type="ColorRect" parent="Platform" unique_id=1683685423]
+offset_left = -100.0
+offset_top = -15.0
+offset_right = 100.0
+offset_bottom = 15.0
+color = Color(0.35, 0.3, 0.18, 1)
+
+[node name="StairStep1" type="StaticBody2D" parent="." unique_id=1094701367]
+position = Vector2(150, 470)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep1" unique_id=1473700703]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep1" unique_id=1743025335]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.3, 0.25, 0.15, 1)
+
+[node name="StairStep2" type="StaticBody2D" parent="." unique_id=349642078]
+position = Vector2(150, 450)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep2" unique_id=307546417]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep2" unique_id=1659156744]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.3, 0.25, 0.15, 1)
+
+[node name="StairStep3" type="StaticBody2D" parent="." unique_id=743826596]
+position = Vector2(150, 430)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StairStep3" unique_id=333453066]
+shape = SubResource("RectangleShape2D_steps")
+
+[node name="ColorRect" type="ColorRect" parent="StairStep3" unique_id=623069191]
+offset_left = -40.0
+offset_top = -7.5
+offset_right = 40.0
+offset_bottom = 7.5
+color = Color(0.3, 0.25, 0.15, 1)
+
 [node name="TrainingDummy" parent="." unique_id=975334861 groups=["training_dummy"] instance=ExtResource("3_gul7h")]
 position = Vector2(230, 409)
 collision_mask = 1
 
-[node name="AttunementSelector" parent="." unique_id=1982629802 instance=ExtResource("6_tskly")]
-offset_left = -852.0
-offset_top = -68.0
-offset_right = -852.0
-offset_bottom = -68.0
+[node name="UILayer" type="CanvasLayer" parent="." unique_id=123555840]
 
-[node name="DebugHUD" parent="." unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
-offset_left = -868.0
-offset_top = 80.0
-offset_right = -868.0
-offset_bottom = 80.0
+[node name="AttunementSelector" parent="UILayer" unique_id=1982629802 instance=ExtResource("6_tskly")]
+offset_left = 16.0
+offset_top = 112.0
+offset_right = 16.0
+offset_bottom = 112.0
 
-[node name="StatsSwitcher" parent="." unique_id=1730580019 instance=ExtResource("4_fnpii")]
-offset_left = -660.0
-offset_top = -50.0
-offset_right = -660.0
-offset_bottom = -50.0
+[node name="DebugHUD" parent="UILayer" unique_id=107808323 groups=["debug_hud"] instance=ExtResource("2_al67s")]
+offset_top = 251.0
+offset_bottom = 251.0
+
+[node name="StatsSwitcher" parent="UILayer" unique_id=1730580019 instance=ExtResource("4_fnpii")]
+offset_left = 210.0
+offset_top = 131.0
+offset_right = 210.0
+offset_bottom = 131.0
 script = ExtResource("5_14n3e")
-player_path = NodePath("../Player")
 
-[node name="DummyBehaviorSelector" parent="." unique_id=1977472266 instance=ExtResource("7_bhvr")]
-offset_left = -660.0
-offset_top = 27.0
-offset_right = -660.0
-offset_bottom = 27.0
-dummy_path = NodePath("../TrainingDummy")
+[node name="DummyBehaviorSelector" parent="UILayer" unique_id=1977472266 instance=ExtResource("7_bhvr")]
+offset_left = 209.0
+offset_top = 206.0
+offset_right = 209.0
+offset_bottom = 206.0
 
-[node name="SpellSelector" parent="." unique_id=1739705035 instance=ExtResource("8_spsel")]
-offset_left = -375.0
-offset_top = -174.0
-offset_right = -375.0
-offset_bottom = -174.0
-player_path = NodePath("../Player")
+[node name="SpellSelector" parent="UILayer" unique_id=1739705035 instance=ExtResource("8_spsel")]
+offset_left = 322.0
+offset_top = 261.0
+offset_right = 322.0
+offset_bottom = 261.0
 
-[node name="AIOpponent" parent="." groups=["ai_opponent", "enemy"] instance=ExtResource("9_aiopp")]
+[node name="AIStrategySelector" parent="UILayer" instance=ExtResource("11_aisel")]
+offset_left = 209.0
+offset_top = 276.0
+offset_right = 209.0
+offset_bottom = 276.0
+opponent_path = NodePath("../../AIOpponent")
+
+[node name="AIOpponent" parent="." groups=["ai_opponent", "enemy"] instance=ExtResource("10_aiopp")]
 position = Vector2(-200, 409)
-
-[node name="AIStrategySelector" parent="." instance=ExtResource("10_aisel")]
-offset_left = -660.0
-offset_top = 87.0
-offset_right = -660.0
-offset_bottom = 87.0
-opponent_path = NodePath("../AIOpponent")
