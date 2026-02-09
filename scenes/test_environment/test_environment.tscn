@@ -25,6 +25,7 @@ size = Vector2(80, 15)
 [node name="TestEnvironment" type="Node2D" unique_id=101179795]
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1331215601]
+zoom = Vector2(3, 3)
 script = ExtResource("9_dyncam")
 target_path = NodePath("../Player")
 
