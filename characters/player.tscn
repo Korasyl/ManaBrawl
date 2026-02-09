@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dcbx80h6k7knp"]
 
 [ext_resource type="Script" uid="uid://b3ts7medgt3i" path="res://characters/player.gd" id="1_dnjla"]
+[ext_resource type="PackedScene" uid="uid://dkirn3xj4mlfk" path="res://characters/crayola_rig.tscn" id="2_rig"]
 [ext_resource type="Resource" uid="uid://bxedo12ho0f4l" path="res://resources/character_stats/default_character_stats.tres" id="2_tory2"]
 [ext_resource type="Resource" uid="uid://cfo4tr01pkeup" path="res://resources/movement_data/default_movement_data.tres" id="3_x0jl3"]
 
@@ -46,6 +47,16 @@ animations = [{
 "speed": 5.0
 }, {
 "frames": [],
+"loop": false,
+"name": &"ledge_clamber",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": false,
+"name": &"ledge_grab",
+"speed": 5.0
+}, {
+"frames": [],
 "loop": true,
 "name": &"sprint",
 "speed": 5.0
@@ -63,16 +74,6 @@ animations = [{
 "frames": [],
 "loop": true,
 "name": &"wall_slide",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": false,
-"name": &"ledge_grab",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": false,
-"name": &"ledge_clamber",
 "speed": 5.0
 }]
 
@@ -104,19 +105,19 @@ target_position = Vector2(-5, 0)
 position = Vector2(20, -30)
 target_position = Vector2(5, 0)
 
-[node name="LedgeCheckLeft" type="RayCast2D" parent="."]
+[node name="LedgeCheckLeft" type="RayCast2D" parent="." unique_id=962824465]
 position = Vector2(-28, -65)
 target_position = Vector2(0, 10)
 
-[node name="LedgeCheckRight" type="RayCast2D" parent="."]
+[node name="LedgeCheckRight" type="RayCast2D" parent="." unique_id=1601436751]
 position = Vector2(28, -65)
 target_position = Vector2(0, 10)
 
-[node name="LedgeAboveCheckLeft" type="RayCast2D" parent="."]
+[node name="LedgeAboveCheckLeft" type="RayCast2D" parent="." unique_id=2066449335]
 position = Vector2(-28, -70)
 target_position = Vector2(0, -5)
 
-[node name="LedgeAboveCheckRight" type="RayCast2D" parent="."]
+[node name="LedgeAboveCheckRight" type="RayCast2D" parent="." unique_id=1344212540]
 position = Vector2(28, -70)
 target_position = Vector2(0, -5)
 
@@ -139,3 +140,5 @@ offset_top = -20.0
 offset_right = 30.0
 offset_bottom = 20.0
 color = Color(0.8862745, 0, 0, 0.17254902)
+
+[node name="CrayolaRig" parent="." unique_id=479815975 instance=ExtResource("2_rig")]

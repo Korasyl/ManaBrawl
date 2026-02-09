@@ -26,6 +26,7 @@ var team_id: int = 0
 @onready var melee_collision: CollisionShape2D = $MeleeHitbox/CollisionShape2D
 @onready var body_collision: CollisionShape2D = $CollisionShape2D
 @onready var color_rect: ColorRect = $ColorRect
+@onready var crayola_rig: CrayolaRig = $CrayolaRig
 
 ## Ledge detection raycasts
 @onready var ledge_check_left: RayCast2D = $LedgeCheckLeft
@@ -153,42 +154,10 @@ var placement_locked: bool = false  # True while holding LMB to rotate
 ## Physics
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
-## Arm animation system
-var front_arm: Sprite2D
-var back_arm: Sprite2D
-var current_body_anim: String = "idle"  # Tracks body animation state for arm sync
+## Arm/rig animation state
+var current_body_anim: String = "idle"  # Tracks body animation state for rig sync
 var arm_override_active: bool = false   # True when arms are independently aimed
 
-const ARM_WIDTH: float = 4.0
-const ARM_LENGTH: float = 20.0
-const ARM_SHOULDER_OFFSET: Vector2 = Vector2(5.0, -48.0)  # x = lateral spread, y = shoulder height
-const ARM_COLOR_FRONT := Color(0.68, 0.58, 0.50)
-const ARM_COLOR_BACK := Color(0.52, 0.44, 0.38)
-
-# Arm poses per body animation state: Vector2(front_rotation, back_rotation) in radians.
-# 0 = straight down, negative = forward, positive = backward (when facing right).
-const ARM_POSES := {
-	"idle":             Vector2(0.08, -0.08),
-	"walk":             Vector2(0.25, -0.2),
-	"walk_back":        Vector2(-0.2, 0.25),
-	"sprint":           Vector2(0.4, -0.35),
-	"sprint_back":      Vector2(-0.35, 0.4),
-	"crouch":           Vector2(0.15, -0.1),
-	"crouchwalk":       Vector2(0.25, -0.15),
-	"crouchwalk_back":  Vector2(-0.15, 0.25),
-	"jump":             Vector2(-0.35, 0.3),
-	"fall":             Vector2(0.45, -0.25),
-	"hit":              Vector2(0.3, 0.2),
-	"block":            Vector2(-0.9, -0.7),
-	"dash":             Vector2(0.6, 0.5),
-	"wall_cling":       Vector2(-0.4, 0.15),
-	"wall_slide":       Vector2(-0.25, 0.1),
-	"coalesce_ground":  Vector2(-0.6, 0.6),
-	"coalesce_air":     Vector2(-0.55, 0.55),
-	"coalesce_wall":    Vector2(-0.5, 0.35),
-	"ledge_grab":       Vector2(-1.2, -1.0),
-	"ledge_clamber":    Vector2(-0.8, -0.6),
-}
 
 func _ready():
 	add_to_group("player")
@@ -233,9 +202,6 @@ func _ready():
 	attunements.initialize(self)
 	attunements.set_slot_attunement(0, starting_attunement)
 
-	# --- Arm nodes init ---
-	_setup_arms()
-
 	# --- Passive skill init ---
 	_load_passive()
 	
@@ -246,37 +212,18 @@ func _ready():
 	
 	if debug_hud and starting_attunement:
 		debug_hud.log_action("[color=violet]Attune Slot 1:[/color] %s" % starting_attunement.attunement_name)
-	
+
+	if animated_sprite:
+		animated_sprite.visible = false
+	if color_rect:
+		color_rect.visible = false
+
 	print("Found debug HUD: ", debug_hud)
 	if debug_hud:
 		update_hud()
 	else:
 		print("ERROR: Debug HUD not found!")
 
-func _setup_arms():
-	var front_tex := _create_arm_texture(ARM_COLOR_FRONT)
-	var back_tex := _create_arm_texture(ARM_COLOR_BACK)
-
-	# Back arm — renders behind body sprite
-	back_arm = Sprite2D.new()
-	back_arm.name = "BackArm"
-	back_arm.texture = back_tex
-	back_arm.z_index = -1
-	back_arm.offset = Vector2(0, ARM_LENGTH * 0.5)  # Pivot at shoulder (top of rect)
-	add_child(back_arm)
-
-	# Front arm — renders in front of body sprite
-	front_arm = Sprite2D.new()
-	front_arm.name = "FrontArm"
-	front_arm.texture = front_tex
-	front_arm.z_index = 1
-	front_arm.offset = Vector2(0, ARM_LENGTH * 0.5)  # Pivot at shoulder (top of rect)
-	add_child(front_arm)
-
-func _create_arm_texture(color: Color) -> ImageTexture:
-	var img := Image.create(int(ARM_WIDTH), int(ARM_LENGTH), false, Image.FORMAT_RGBA8)
-	img.fill(color)
-	return ImageTexture.create_from_image(img)
 
 func _physics_process(delta):
 	# Handle death/respawn
@@ -1059,30 +1006,17 @@ func update_animation():
 	current_body_anim = anim
 	if debug_hud:
 		debug_hud.update_animation(anim)
+	if crayola_rig:
+		crayola_rig.set_body_animation(anim)
 
 func update_arms():
-	if not front_arm or not back_arm:
+	if not crayola_rig:
 		return
 
 	var facing_right := not animated_sprite.flip_h
-	var x_sign := 1.0 if facing_right else -1.0
-
-	# Position arms at shoulder — mirror x offset based on facing
-	front_arm.position = Vector2(ARM_SHOULDER_OFFSET.x * x_sign, ARM_SHOULDER_OFFSET.y)
-	back_arm.position = Vector2(-ARM_SHOULDER_OFFSET.x * x_sign, ARM_SHOULDER_OFFSET.y)
-
-	if arm_override_active:
-		# Aiming override — rotate arms toward mouse/aim direction
-		var aim_angle := (get_global_mouse_position() - global_position).angle()
-		# Offset by PI/2 so 0 rad in pose space (straight down) maps to correct visual
-		var visual_angle := aim_angle - PI / 2.0
-		front_arm.rotation = visual_angle
-		back_arm.rotation = visual_angle
-	else:
-		# Follow mode — match body animation pose
-		var pose: Vector2 = ARM_POSES.get(current_body_anim, Vector2(0.08, -0.08))
-		front_arm.rotation = pose.x * x_sign
-		back_arm.rotation = pose.y * x_sign
+	crayola_rig.set_facing_right(facing_right)
+	crayola_rig.set_body_animation(current_body_anim)
+	crayola_rig.update_arm_pose(arm_override_active, get_global_mouse_position())
 
 func handle_attack_timers(delta):
 	# Handle attack duration
