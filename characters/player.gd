@@ -242,7 +242,7 @@ func _ready():
 	# Try multiple methods to find HUD
 	debug_hud = get_tree().get_first_node_in_group("debug_hud")
 	if not debug_hud:
-		debug_hud = get_node_or_null("/root/TestEnvironment/DebugHUD")
+		debug_hud = get_node_or_null("/root/TestEnvironment/UILayer/DebugHUD")
 	
 	if debug_hud and starting_attunement:
 		debug_hud.log_action("[color=violet]Attune Slot 1:[/color] %s" % starting_attunement.attunement_name)
