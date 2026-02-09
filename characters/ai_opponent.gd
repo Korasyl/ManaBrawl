@@ -33,6 +33,7 @@ var team_id: int = 1
 @onready var melee_hitbox: Area2D = $MeleeHitbox
 @onready var melee_collision: CollisionShape2D = $MeleeHitbox/CollisionShape2D
 @onready var detection_area: Area2D = $DetectionArea
+@onready var ranged_detection_area: Area2D = $RangedDetectionArea
 @onready var health_bar: ProgressBar = $HealthBar
 @onready var health_label: Label = $HealthLabel
 @onready var mana_bar: ProgressBar = $ManaBar
@@ -158,10 +159,10 @@ func _ready():
 	if melee_hitbox:
 		melee_hitbox.body_entered.connect(_on_melee_hitbox_body_entered)
 
-	# Detection area
-	if detection_area:
-		detection_area.body_entered.connect(_on_target_detected)
-		detection_area.body_exited.connect(_on_target_lost)
+	# Detection areas — ranged area manages target acquisition/loss
+	if ranged_detection_area:
+		ranged_detection_area.body_entered.connect(_on_target_detected)
+		ranged_detection_area.body_exited.connect(_on_target_lost)
 
 	original_color = color_rect.color if color_rect else Color(0.85, 0.25, 0.25)
 	spawn_position = global_position
@@ -555,7 +556,7 @@ func _do_retreat(delta):
 		_do_wall_jump()
 
 	# If far enough away and low mana, transition to recover
-	if dist > 200.0 and (current_mana / max(1.0, stats.max_mana)) < strat.coalesce_mana_threshold:
+	if dist > 200.0 and (current_mana / maxf(1.0, stats.max_mana)) < strat.coalesce_mana_threshold:
 		current_behavior = AIBehavior.RECOVER
 
 	_update_melee_hitbox_position()
@@ -584,7 +585,7 @@ func _do_recover(delta):
 			velocity.x = move_toward(velocity.x, -dir * stats.walk_speed * 0.5, movement_data.ground_acceleration * delta)
 
 	# Stop recovering when mana is above threshold
-	if (current_mana / max(1.0, stats.max_mana)) > 0.7:
+	if (current_mana / maxf(1.0, stats.max_mana)) > 0.7:
 		_stop_coalescing()
 		current_behavior = AIBehavior.APPROACH
 
@@ -1015,20 +1016,29 @@ func _place_spell(spell: SpellData):
 
 	var strat := _get_strategy()
 	var dir_to_target: float = signf(target.global_position.x - global_position.x)
+	var target_above: bool = target.global_position.y < global_position.y - 30
 
-	# Strategy-driven placement position
 	var place_pos: Vector2
-	if strat.placement_defensiveness > 0.6:
-		# Defensive: place between self and target
-		place_pos = global_position + Vector2(dir_to_target * 60, 0)
-	elif strat.placement_defensiveness < 0.4:
-		# Aggressive: place to cut off target's retreat
-		place_pos = target.global_position + Vector2(dir_to_target * 40, 0)
-	else:
-		# Neutral: place at midpoint
-		place_pos = (global_position + target.global_position) * 0.5
+	var place_rotation: float = 0.0
 
-	var place_rotation := 0.0  # Upright by default
+	if strat.placement_defensiveness > 0.6:
+		# Defensive: place vertically as a WALL between self and target
+		place_pos = global_position + Vector2(dir_to_target * 60, -40)
+		place_rotation = PI / 2.0
+	elif strat.placement_defensiveness < 0.4:
+		# Aggressive: when target is above, place as angled RAMP toward them
+		if target_above:
+			place_pos = global_position + Vector2(dir_to_target * 50, -10)
+			# Tilt ~36 degrees in the direction of the target so AI can run up
+			place_rotation = -dir_to_target * PI / 5.0
+		else:
+			# Target at same level or below — place offensively near target
+			place_pos = target.global_position + Vector2(-dir_to_target * 40, 0)
+			place_rotation = 0.0
+	else:
+		# Supportive/Attrition: place horizontally in the AIR as a PLATFORM
+		place_pos = global_position + Vector2(0, -120)
+		place_rotation = 0.0
 
 	var entity = spell.spell_scene.instantiate()
 	entity.global_position = place_pos
@@ -1419,8 +1429,9 @@ func _update_visual():
 		color_rect.modulate = Color.WHITE
 
 func _draw():
-	# Detection range
-	draw_circle(Vector2(0, -40), 200, Color(1, 0, 0, 0.05))
+	# Detection ranges
+	draw_circle(Vector2(0, -40), 200, Color(1, 0, 0, 0.05))   # Melee detection
+	draw_circle(Vector2(0, -40), 500, Color(0.5, 0, 1, 0.03)) # Ranged detection
 
 	# Hitbox debug
 	if melee_hitbox:
