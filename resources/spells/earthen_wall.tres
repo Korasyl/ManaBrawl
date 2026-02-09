@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/earthen_wall.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Earthen Wall"
+description = "Creates a temporary solid barrier that blocks projectiles and movement. Lasts 6s. Can save allies or trap enemies."
+mana_cost = 35.0
+cooldown = 18.0
+cast_type = "placement"
+spell_scene = ExtResource("2_scene")
+damage = 0.0
+interrupt_type = "none"
+projectile_speed = 0.0
+projectile_color = Color(0.55, 0.4, 0.25, 1)
+placement_preview_size = Vector2(200, 20)
+placement_preview_color = Color(0.55, 0.4, 0.25, 0.3)
+placement_preview_outline_color = Color(0.65, 0.5, 0.3, 0.85)
+slow_move = 1.0
+toggle_mana_drain = 0.0

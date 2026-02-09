@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/vampiric_strike.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Vampiric Strike"
+description = "Fires a dark projectile that deals 25 damage and heals you for 40% of damage dealt. Self-sustain through aggression."
+mana_cost = 35.0
+cooldown = 9.0
+cast_type = "targeted"
+spell_scene = ExtResource("2_scene")
+damage = 25.0
+interrupt_type = "flinch"
+projectile_speed = 500.0
+projectile_color = Color(0.8, 0.1, 0.3, 1)
+targeted_delivery = "projectile"
+targeted_homing_turn_speed = 8.0
+can_target_allies = false
+can_target_enemies = true
+slow_move = 1.0
+toggle_mana_drain = 0.0

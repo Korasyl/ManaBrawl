@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/spells/guardians_leap.gd" id="1_gl"]
+
+[node name="GuardiansLeap" type="Node2D"]
+script = ExtResource("1_gl")
+max_lifetime = 1.0
+
+[node name="Telegraph" type="ColorRect" parent="."]
+offset_left = -24.0
+offset_top = -24.0
+offset_right = 24.0
+offset_bottom = 24.0
+color = Color(0.3, 0.8, 1, 0.35)

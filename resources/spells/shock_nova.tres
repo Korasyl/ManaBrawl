@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/shock_nova.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Shock Nova"
+description = "After a 0.5s delay, creates an electrical explosion at the target location. Staggers all enemies caught in the blast."
+mana_cost = 50.0
+cooldown = 12.0
+cast_type = "free_aim"
+spell_scene = ExtResource("2_scene")
+damage = 30.0
+interrupt_type = "stagger"
+projectile_speed = 0.0
+projectile_color = Color(1, 1, 0.4, 1)
+slow_move = 1.0
+toggle_mana_drain = 0.0

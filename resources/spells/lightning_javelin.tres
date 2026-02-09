@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpellData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="PackedScene" path="res://scenes/spells/lightning_javelin.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_spell")
+spell_name = "Lightning Javelin"
+description = "Hurls a lightning bolt that pierces through the first enemy, dealing reduced damage to targets behind. Rewards positioning against clumped foes."
+mana_cost = 25.0
+cooldown = 6.0
+cast_type = "free_aim"
+spell_scene = ExtResource("2_scene")
+damage = 25.0
+interrupt_type = "flinch"
+projectile_speed = 700.0
+projectile_color = Color(0.9, 0.95, 0.3, 1)
+slow_move = 1.0
+toggle_mana_drain = 0.0
