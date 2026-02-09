@@ -11,6 +11,9 @@ size = Vector2(50, 80)
 [sub_resource type="CircleShape2D" id="detect_shape"]
 radius = 200.0
 
+[sub_resource type="CircleShape2D" id="ranged_detect_shape"]
+radius = 500.0
+
 [sub_resource type="RectangleShape2D" id="melee_shape"]
 size = Vector2(70, 50)
 
@@ -47,6 +50,14 @@ collision_mask = 4
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
 shape = SubResource("detect_shape")
+
+[node name="RangedDetectionArea" type="Area2D" parent="."]
+position = Vector2(0, -40)
+collision_layer = 0
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedDetectionArea"]
+shape = SubResource("ranged_detect_shape")
 
 [node name="MeleeHitbox" type="Area2D" parent="."]
 position = Vector2(50, -40)
