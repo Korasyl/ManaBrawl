@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="AIStrategy" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_strategy.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+strategy_name = "Aggressive"
+description = "Prioritizes closing distance, combo pressure, and mana-for-damage trades. Uses spells offensively."
+aggression = 0.8
+defensiveness = 0.2
+spell_preference = 0.3
+preferred_melee_range = 80.0
+preferred_spell_range = 200.0
+too_close_distance = 30.0
+chase_max_distance = 500.0
+coalesce_mana_threshold = 0.15
+retreat_health_threshold = 0.15
+aggressive_health_threshold = 0.5
+spell_mana_reserve = 0.1
+decision_interval = 0.25
+reaction_delay = 0.08
+block_chance = 0.2
+dodge_chance = 0.4
+spell_priority = [0, 3, 1, 2]
+placement_defensiveness = 0.2
