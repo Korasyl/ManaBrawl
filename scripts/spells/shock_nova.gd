@@ -71,7 +71,7 @@ func _resolve_burst() -> void:
 				ContextKeys.TEAM_ID: team_id,
 				ContextKeys.SPELL_DATA: spell_data,
 			}
-			var knockback := (body.global_position - global_position).normalized() * 280.0
+			var knockback: Vector2 = (body.global_position - global_position).normalized() * 280.0
 			body.take_damage(burst_damage, knockback, burst_interrupt, ctx)
 
 	queue_free()

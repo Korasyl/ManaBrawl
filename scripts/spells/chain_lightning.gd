@@ -38,7 +38,7 @@ func _on_spawn() -> void:
 func _spell_process(delta: float) -> void:
 	# Home toward current target if we have one
 	if _current_target != null and is_instance_valid(_current_target):
-		var to_target := (_current_target.global_position - global_position)
+		var to_target: Vector2 = _current_target.global_position - global_position
 		if to_target.length() < 20.0:
 			_hit_target(_current_target)
 			return
