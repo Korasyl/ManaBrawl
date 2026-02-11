@@ -7,6 +7,11 @@ class_name SpellData
 @export var cooldown: float = 5.0
 @export_enum("targeted", "free_aim", "toggled", "placement") var cast_type: String = "free_aim"
 
+## Weapon Pose — arm/weapon behavior while aiming/casting this spell.
+## Overrides the ranged mode and default weapon poses.
+## If null, inherits from the active ranged mode or CharacterStats default.
+@export var weapon_pose: WeaponPoseData
+
 ## Spell scene — if set, this scene is instantiated as the spell's effect.
 ## For projectile spells: overrides the default projectile scene.
 ## For placement spells: the scene spawned at the placement location.
@@ -34,7 +39,6 @@ class_name SpellData
 @export var channel_mana_drain_per_second: float = 16.0
 @export var channel_fire_interval: float = 0.16
 @export var channel_projectiles_per_tick: int = 1
-
 
 ## Cast modifiers (GDD spell variables)
 @export var prevent_move: bool = false

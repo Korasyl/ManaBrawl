@@ -158,6 +158,9 @@ var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 var current_body_anim: String = "idle"  # Tracks body animation state for rig sync
 var arm_override_active: bool = false   # True when arms are independently aimed
 
+## Track previous weapon pose to detect changes
+var _current_weapon_pose: WeaponPoseData = null
+
 
 func _ready():
 	add_to_group("player")
@@ -223,7 +226,25 @@ func _ready():
 		update_hud()
 	else:
 		print("ERROR: Debug HUD not found!")
+		
+	_load_character_rig()
 
+func _load_character_rig() -> void:
+	"""Load the character-specific rig scene from stats, or keep default."""
+	if stats and stats.rig_scene:
+		if crayola_rig:
+			crayola_rig.queue_free()
+		crayola_rig = stats.rig_scene.instantiate()
+		add_child(crayola_rig)
+
+	# Connect rig signals
+	if crayola_rig:
+		if not crayola_rig.sequence_step_changed.is_connected(_on_sequence_step_changed):
+			crayola_rig.sequence_step_changed.connect(_on_sequence_step_changed)
+		if not crayola_rig.anim_event.is_connected(_on_rig_anim_event):
+			crayola_rig.anim_event.connect(_on_rig_anim_event)
+		if not crayola_rig.melee_hitbox_requested.is_connected(_on_melee_hitbox_requested):
+			crayola_rig.melee_hitbox_requested.connect(_on_melee_hitbox_requested)
 
 func _physics_process(delta):
 	# Handle death/respawn
@@ -1009,19 +1030,52 @@ func update_animation():
 	if crayola_rig:
 		crayola_rig.set_body_animation(anim)
 
-func update_arms():
+func update_arms() -> void:
 	if not crayola_rig:
 		return
 
-	var facing_right := not animated_sprite.flip_h
-	crayola_rig.set_facing_right(facing_right)
-	crayola_rig.set_body_animation(current_body_anim)
-	crayola_rig.update_arm_pose(arm_override_active, get_global_mouse_position())
+	crayola_rig.set_facing_right(not animated_sprite.flip_h)
+
+	# ---- Resolve active weapon pose (priority: spell > ranged > default) ----
+	var pose: WeaponPoseData = null
+
+	if queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
+		var spell := spell_slots[queued_spell_index]
+		if spell and spell.weapon_pose:
+			pose = spell.weapon_pose
+
+	if pose == null and is_in_ranged_mode:
+		var rm := stats.ranged_mode if stats and stats.ranged_mode else _default_ranged_mode
+		if rm.weapon_pose:
+			pose = rm.weapon_pose
+
+	if pose == null and stats:
+		pose = stats.default_weapon_pose
+
+	# ---- Apply weapon state only on change ----
+	if pose != _current_weapon_pose:
+		crayola_rig.apply_weapon_state(pose)
+		_current_weapon_pose = pose
+
+	# ---- Update aim tracking ----
+	var should_aim := arm_override_active and pose != null
+	if should_aim:
+		var flags := crayola_rig.get_current_aim_flags()
+		if flags > 0:
+			crayola_rig.update_arm_aim(true, get_global_mouse_position())
+			return
+
+	crayola_rig.update_arm_aim(false, Vector2.ZERO)
 
 func handle_attack_timers(delta):
 	# Handle attack duration
 	if is_attacking:
 		attack_timer -= delta
+		# Anim-event-free hitbox timing (for attacks without method call tracks)
+	if crayola_rig and crayola_rig.get_active_melee_attack():
+		var elapsed := (crayola_rig.get_active_melee_attack().duration - attack_timer)
+		var should_be_active := crayola_rig.should_hitbox_be_active(elapsed)
+		melee_collision.disabled = not should_be_active
 		if attack_timer <= 0:
 			end_attack()
 	
@@ -1088,47 +1142,76 @@ func handle_attack_input():
 		heavy_charge_timer = 0.0
 		is_charging_heavy = false
 
+## Updated perform_light_attack — plays rig animation if MeleeAttackData exists.
 func perform_light_attack():
 	is_attacking = true
 	is_heavy_attack = false
-	attack_timer = stats.light_attack_duration
-	hit_bodies_this_attack.clear()
-	landed_flinch_this_attack = false  # Reset flinch tracker
-	
-	# Increment combo count
 	combo_count += 1
-	
-	# Enable hitbox
-	melee_collision.disabled = false
-	
+	hit_bodies_this_attack.clear()
+	landed_flinch_this_attack = false
+
+	# Determine which attack data to use (combo second hit vs first)
+	var attack_data: MeleeAttackData = null
+	if stats:
+		if combo_count >= 2 and stats.combo_light_attack_data:
+			attack_data = stats.combo_light_attack_data
+		elif stats.light_attack_data:
+			attack_data = stats.light_attack_data
+
+	# Use attack data duration if available, otherwise fall back to stats
+	if attack_data:
+		attack_timer = attack_data.duration
+		if crayola_rig:
+			crayola_rig.play_melee_attack(attack_data)
+		# If using anim events, DON'T enable hitbox here — anim will trigger it
+		if not attack_data.use_anim_events:
+			melee_collision.disabled = false
+	else:
+		attack_timer = stats.light_attack_duration
+		melee_collision.disabled = false
+
 	if debug_hud:
 		var combo_text = " #%d" % combo_count if combo_count > 1 else ""
 		debug_hud.log_action("[color=cyan]Light Attack%s[/color]" % combo_text)
 
+## Updated perform_heavy_attack — plays rig animation if MeleeAttackData exists.
 func perform_heavy_attack():
 	is_attacking = true
 	is_heavy_attack = true
-	attack_timer = stats.heavy_attack_duration
-	hit_bodies_this_attack.clear()  # Clear hit list
-	
-	# Enable hitbox
-	melee_collision.disabled = false
-	
+	hit_bodies_this_attack.clear()
+
+	var attack_data: MeleeAttackData = null
+	if stats:
+		attack_data = stats.heavy_attack_data
+
+	if attack_data:
+		attack_timer = attack_data.duration
+		if crayola_rig:
+			crayola_rig.play_melee_attack(attack_data)
+		if not attack_data.use_anim_events:
+			melee_collision.disabled = false
+	else:
+		attack_timer = stats.heavy_attack_duration
+		melee_collision.disabled = false
+
 	if debug_hud:
 		debug_hud.log_action("Heavy Attack")
 
+## Updated end_attack — notify rig.
 func end_attack():
 	is_attacking = false
 	melee_collision.disabled = true
 
-	# If first light landed a flinch, open combo window
+	if crayola_rig:
+		crayola_rig.end_melee_attack()
+
+	# Existing combo logic remains unchanged below...
 	if combo_count == 1 and not is_heavy_attack and landed_flinch_this_attack:
 		can_combo = true
 		combo_window_timer = 0.5
 		if debug_hud:
 			debug_hud.log_action("[color=lime]Combo available![/color]")
 	elif combo_count >= 2 or is_heavy_attack:
-		# Combo finished or heavy used — apply melee cooldown (GDD: prevents spam)
 		combo_count = 0
 		can_combo = false
 		combo_window_timer = 0.0
@@ -1231,6 +1314,16 @@ func _on_melee_hitbox_body_entered(hit_body):
 	ctx[ContextKeys.DAMAGE] = final_damage
 	ctx[ContextKeys.INTERRUPT] = interrupt_type
 	hit_body.take_damage(final_damage, knockback, interrupt_type, ctx)
+	
+	# Play hit effects
+	if Effects:
+		var attack_data: MeleeAttackData = null
+		if stats:
+			attack_data = stats.heavy_attack_data if is_heavy_attack else stats.light_attack_data
+		if attack_data and attack_data.effect_profile:
+			Effects.play_profile(attack_data.effect_profile, hit_body.global_position)
+		else:
+			Effects.play_hit(hit_body.global_position, "melee", "heavy" if is_heavy_attack else "light")
 
 	# Determine mana gain based on what happened
 	var base_gain: float
@@ -1332,6 +1425,10 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
 		update_hud()
+		
+
+##	_load_character_rig()
+##	_current_weapon_pose = null  # Force re-evaluation of weapon state
 
 func set_attunement_slot(slot_index: int, a: Attunement) -> void:
 	if attunements == null:
@@ -1438,7 +1535,10 @@ func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, inte
 
 	# --- Apply damage ---
 	current_health -= damage
-	_flash_damage()
+	var strength := "heavy" if interrupt_type == "stagger" else "light"
+	
+	if Effects:
+		Effects.hit_feedback(animated_sprite if animated_sprite else self, global_position, strength)
 
 	# Stagger interrupts coalescence — check before knockback clears state
 	if is_coalescing and interrupt_type == "stagger":
@@ -1581,6 +1681,43 @@ func respawn():
 
 	if debug_hud:
 		debug_hud.log_action("[color=lime]Respawned![/color]")
+
+# ---- Signal Callbacks ----
+
+func _on_sequence_step_changed(step_index: int, step: ArmSequenceStep) -> void:
+	"""Hook for gameplay events triggered by arm sequence changes.
+	e.g., Spatchcock could spawn/despawn flintlock VFX here."""
+	pass
+
+
+func _on_rig_anim_event(event_name: String) -> void:
+	"""React to animation events from the rig.
+	Standard events are handled by the rig internally (hitbox_on/off).
+	Add custom handling here for character-specific events."""
+	match event_name:
+		"impact":
+			# Use the EffectManager for hit feedback
+			var attack_data := crayola_rig.get_active_melee_attack() if crayola_rig else null
+			if attack_data and attack_data.effect_profile:
+				Effects.play_profile(attack_data.effect_profile, global_position)
+			else:
+				Effects.screen_shake(4.0, 0.1)
+		"spawn_vfx":
+			# Spawn VFX at weapon's effect anchor
+			pass
+		"play_sfx":
+			# Play sound effect
+			pass
+		"step_left", "step_right":
+			# Footstep sounds
+			pass
+
+
+func _on_melee_hitbox_requested(active: bool) -> void:
+	"""Called when an animation event toggles the hitbox.
+	Only fires for attacks with use_anim_events = true."""
+	if is_attacking:
+		melee_collision.disabled = not active
 
 # ---- Ranged Mode ----
 

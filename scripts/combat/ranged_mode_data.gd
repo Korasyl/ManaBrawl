@@ -5,6 +5,11 @@ class_name RangedModeData
 @export var mode_name: String = "Basic Ranged"
 @export_enum("free_aim", "targeted", "deflect", "none") var mode_type: String = "free_aim"
 
+## Weapon Pose — arm/weapon behavior while in this ranged mode.
+## Overrides the default weapon pose from CharacterStats.
+## If null, falls back to CharacterStats.default_weapon_pose.
+@export var weapon_pose: WeaponPoseData
+
 ## Projectile properties
 @export var damage: float = 8.0
 @export var damage_type: String = "ranged"  # Flows into ContextKeys.DAMAGE_TYPE for attunement hooks
@@ -17,7 +22,6 @@ class_name RangedModeData
 @export var fire_cooldown: float = 0.4
 @export var mana_cost: float = 5.0
 @export var move_speed_mult: float = 0.7  # Movement speed while in ranged mode
-
 
 ## Targeted delivery options (used when mode_type == "targeted")
 @export var targeted_max_range_from_cursor: float = 220.0

@@ -4,3 +4,5 @@
 
 [resource]
 script = ExtResource("1_rmd")
+aim_idle_pose = Vector2(0, -0.5)
+aim_idle_elbow = Vector2(0, -5)

@@ -6,6 +6,16 @@ class_name CharacterStats
 @export var max_health: float = 100.0
 @export var max_mana: float = 100.0
 
+## Character Rig — the visual skeleton scene for this character.
+## Each character has their own rig scene with unique textures, proportions,
+## and AnimationPlayer clips. If null, uses the default CrayolaRig.
+@export var rig_scene: PackedScene
+
+## Default Weapon Pose — arm/weapon behavior when NOT in ranged mode or casting.
+## Controls idle weapon hold, arm animations, etc.
+## If null, arms are fully driven by body animations (no weapon).
+@export var default_weapon_pose: WeaponPoseData
+
 ## Movement Stats
 @export var walk_speed: float = 200.0
 @export var sprint_speed: float = 350.0
@@ -40,6 +50,15 @@ class_name CharacterStats
 @export var light_attack_duration: float = 0.3  # How long hitbox is active (also clash window)
 @export var heavy_attack_duration: float = 0.45
 @export var knockback_force: float = 300.0  # For heavy attacks
+
+## Melee Attack Animations — per-character attack definitions.
+## If null, attacks still work with the timer-based system (no animation).
+## When set, the rig plays the specified animation and optionally uses
+## anim events for frame-perfect hitbox control.
+@export var light_attack_data: MeleeAttackData
+@export var heavy_attack_data: MeleeAttackData
+## Optional second light for combos (different animation than first light).
+@export var combo_light_attack_data: MeleeAttackData
 
 ## Ranged
 @export var ranged_mode: RangedModeData

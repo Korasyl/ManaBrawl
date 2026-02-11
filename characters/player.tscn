@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://characters/crayola_rig.tscn" id="2_rig"]
 [ext_resource type="Resource" uid="uid://bxedo12ho0f4l" path="res://resources/character_stats/default_character_stats.tres" id="2_tory2"]
 [ext_resource type="Resource" uid="uid://cfo4tr01pkeup" path="res://resources/movement_data/default_movement_data.tres" id="3_x0jl3"]
+[ext_resource type="Script" uid="uid://c5tv8dqjp2i4n" path="res://scripts/states/player_state_machine.gd" id="5_evndh"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_6p3mc"]
 radius = 20.0
@@ -143,3 +144,9 @@ color = Color(0.8862745, 0, 0, 0.17254902)
 
 [node name="CrayolaRig" parent="." unique_id=479815975 instance=ExtResource("2_rig")]
 position = Vector2(0, 46)
+rig_scale = null
+arm_lerp_speed = null
+
+[node name="PlayerStateMachine" type="Node" parent="." unique_id=162911549]
+script = ExtResource("5_evndh")
+metadata/_custom_type_script = "uid://c5tv8dqjp2i4n"
