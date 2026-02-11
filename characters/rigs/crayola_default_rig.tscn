@@ -101,7 +101,7 @@ texture = ExtResource("11_fhand")
 centered = false
 
 [node name="FrontHandWeaponAnchor" type="Node2D" parent="StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot" unique_id=2050008751]
-position = Vector2(0, 8)
+position = Vector2(0.3, 8)
 
 [node name="BackArmPivot" type="Node2D" parent="StomachPivot/ChestPivot" unique_id=581286312]
 position = Vector2(2, -8)

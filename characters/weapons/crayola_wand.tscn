@@ -1,7 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://drsuy7o5ivfri"]
 
-[ext_resource type="Script" path="res://scripts/visuals/weapon_sprite.gd" id="1_ws"]
-[ext_resource type="Texture2D" path="res://sprites/crayola/bodyparts/Crayola_Front_Hand.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://ckwu13mmody25" path="res://scripts/visuals/weapon_sprite.gd" id="1_ws"]
 
 [sub_resource type="Animation" id="Animation_idle"]
 resource_name = "idle"
@@ -13,36 +12,30 @@ _data = {
 &"idle": SubResource("Animation_idle")
 }
 
-[node name="CrayolaWand" type="Node2D"]
+[node name="CrayolaWand" type="Node2D" unique_id=684799972]
 script = ExtResource("1_ws")
 idle_animation = &"idle"
+hand_rotation_offset_degrees = 180.0
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_tex")
-offset = Vector2(0, -20)
-z_index = 0
-modulate = Color(1, 0.85, 0.25, 1)
+[node name="MuzzlePoint" type="Marker2D" parent="." unique_id=1928127544]
+position = Vector2(0, -13)
 
-[node name="MuzzlePoint" type="Marker2D" parent="."]
-position = Vector2(0, -34)
+[node name="EffectAnchor" type="Marker2D" parent="." unique_id=725991383]
+position = Vector2(0, -11)
 
-[node name="EffectAnchor" type="Marker2D" parent="."]
-position = Vector2(0, -30)
+[node name="TrailOrigin" type="Marker2D" parent="." unique_id=1605625421]
+position = Vector2(0, -12)
 
-[node name="TrailOrigin" type="Marker2D" parent="."]
-position = Vector2(0, -30)
+[node name="ImpactPoint" type="Marker2D" parent="." unique_id=1995239635]
+position = Vector2(0, -3)
 
-[node name="ImpactPoint" type="Marker2D" parent="."]
-position = Vector2(0, -14)
-
-[node name="WandSilhouette" type="Line2D" parent="."]
-position = Vector2(0, -4)
+[node name="WandSilhouette" type="Line2D" parent="." unique_id=2119914507]
+z_index = -1
+position = Vector2(0, -2)
+scale = Vector2(0.33333334, 0.4117647)
+points = PackedVector2Array(0, 0, 0, -28)
 width = 3.0
 default_color = Color(1, 0.9, 0.35, 1)
-points = PackedVector2Array(0, 0, 0, -28)
-z_index = -1
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_1")
-}
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=949129682]
+libraries/ = SubResource("AnimationLibrary_1")

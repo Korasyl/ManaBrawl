@@ -79,6 +79,10 @@ var _active_effects: Array[Node] = []
 ## Usually false because the rig's scale.x flip handles this.
 @export var flip_with_facing: bool = false
 
+## Per-weapon rotation correction (degrees) applied after hand/anchor rotation sync.
+## Use this when a weapon's authored forward axis differs from the rig convention.
+@export var hand_rotation_offset_degrees: float = 0.0
+
 func _ready() -> void:
 	# Resolve marker paths
 	if muzzle_point_path != NodePath(""):

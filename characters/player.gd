@@ -243,6 +243,11 @@ func _load_character_rig() -> void:
 		crayola_rig = stats.rig_scene.instantiate()
 		add_child(crayola_rig)
 
+	# Rig instance changed: force weapon pose re-application on the next arm update.
+	# Without this, pose-change caching can skip apply_weapon_state() for the new rig,
+	# causing held weapons (like the wand) to never attach.
+	_current_weapon_pose = null
+
 	# Connect rig signals
 	if crayola_rig:
 		if not crayola_rig.sequence_step_changed.is_connected(_on_sequence_step_changed):

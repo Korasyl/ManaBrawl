@@ -572,6 +572,10 @@ func _sync_weapon_rotation_to_hand() -> void:
 		_:
 			pass
 
+	if _current_weapon_node is WeaponSprite:
+		var ws := _current_weapon_node as WeaponSprite
+		_current_weapon_node.global_rotation += deg_to_rad(ws.hand_rotation_offset_degrees)
+
 # ---- Utility ----
 
 func _apply_pixel_settings(root: Node) -> void:
