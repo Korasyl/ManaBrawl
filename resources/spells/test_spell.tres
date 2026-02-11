@@ -1,9 +1,11 @@
 [gd_resource type="Resource" script_class="SpellData" format=3 uid="uid://b54xyeddu3bgs"]
 
-[ext_resource type="Script" uid="uid://b6vugw0yoomsi" path="res://scripts/combat/spell_data.gd" id="1_hwg6g"]
+[ext_resource type="Script" uid="uid://b6vugw0yoomsi" path="res://scripts/combat/spell_data.gd" id="1_spell"]
+[ext_resource type="Resource" path="res://resources/weapon_poses/crayola_default_pose.tres" id="2_pose"]
 
 [resource]
-script = ExtResource("1_hwg6g")
+script = ExtResource("1_spell")
 spell_name = "Test Spell"
 description = "A basic test projectile for debugging purposes."
+weapon_pose = ExtResource("2_pose")
 metadata/_custom_type_script = "uid://b6vugw0yoomsi"

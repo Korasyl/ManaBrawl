@@ -1,0 +1,39 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/weapon_sprite.gd" id="1_ws"]
+[ext_resource type="Texture2D" path="res://sprites/crayola/bodyparts/Crayola_Front_Hand.png" id="2_tex"]
+
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = "idle"
+length = 0.6
+loop_mode = 1
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
+_data = {
+&"idle": SubResource("Animation_idle")
+}
+
+[node name="CrayolaWand" type="Node2D"]
+script = ExtResource("1_ws")
+idle_animation = &"idle"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_tex")
+offset = Vector2(-2, -12)
+
+[node name="MuzzlePoint" type="Marker2D" parent="."]
+position = Vector2(0, -18)
+
+[node name="EffectAnchor" type="Marker2D" parent="."]
+position = Vector2(0, -12)
+
+[node name="TrailOrigin" type="Marker2D" parent="."]
+position = Vector2(0, -16)
+
+[node name="ImpactPoint" type="Marker2D" parent="."]
+position = Vector2(0, -8)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_1")
+}

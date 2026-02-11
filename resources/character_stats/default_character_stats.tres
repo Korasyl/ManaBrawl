@@ -1,14 +1,22 @@
 [gd_resource type="Resource" script_class="CharacterStats" format=3 uid="uid://bxedo12ho0f4l"]
 
-[ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_ja6m7"]
-[ext_resource type="Resource" path="res://resources/ranged_modes/default_free_aim.tres" id="2_rnged"]
+[ext_resource type="Script" uid="uid://s4jsexs1g15d" path="res://scripts/character_stats.gd" id="1_stats"]
+[ext_resource type="PackedScene" path="res://characters/rigs/crayola_default_rig.tscn" id="2_rig"]
+[ext_resource type="Resource" path="res://resources/weapon_poses/crayola_default_pose.tres" id="3_pose"]
+[ext_resource type="Resource" path="res://resources/melee_attacks/crayola_light.tres" id="4_light"]
+[ext_resource type="Resource" path="res://resources/melee_attacks/crayola_heavy.tres" id="5_heavy"]
+[ext_resource type="Resource" path="res://resources/ranged_modes/default_free_aim.tres" id="6_rnged"]
 
 [resource]
-script = ExtResource("1_ja6m7")
+script = ExtResource("1_stats")
 character_name = "Test_Default"
+rig_scene = ExtResource("2_rig")
+default_weapon_pose = ExtResource("3_pose")
 wall_jump_cost = 1.0
 wall_cling_drain = 7.0
 coalescence_multiplier = 6.0
 knockback_force = 800.0
-ranged_mode = ExtResource("2_rnged")
+light_attack_data = ExtResource("4_light")
+heavy_attack_data = ExtResource("5_heavy")
+ranged_mode = ExtResource("6_rnged")
 metadata/_custom_type_script = "uid://s4jsexs1g15d"

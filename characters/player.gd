@@ -1072,10 +1072,10 @@ func handle_attack_timers(delta):
 	if is_attacking:
 		attack_timer -= delta
 		# Anim-event-free hitbox timing (for attacks without method call tracks)
-	if crayola_rig and crayola_rig.get_active_melee_attack():
-		var elapsed := (crayola_rig.get_active_melee_attack().duration - attack_timer)
-		var should_be_active := crayola_rig.should_hitbox_be_active(elapsed)
-		melee_collision.disabled = not should_be_active
+		if crayola_rig and crayola_rig.get_active_melee_attack():
+			var elapsed := (crayola_rig.get_active_melee_attack().duration - attack_timer)
+			var should_be_active := crayola_rig.should_hitbox_be_active(elapsed)
+			melee_collision.disabled = not should_be_active
 		if attack_timer <= 0:
 			end_attack()
 	
@@ -1425,10 +1425,9 @@ func set_character_stats(new_stats: CharacterStats, keep_ratios: bool = true) ->
 	if debug_hud:
 		debug_hud.log_action("[color=cyan]Swapped to:[/color] %s" % stats.character_name)
 		update_hud()
-		
 
-##	_load_character_rig()
-##	_current_weapon_pose = null  # Force re-evaluation of weapon state
+	_load_character_rig()
+	_current_weapon_pose = null  # Force re-evaluation of weapon state
 
 func set_attunement_slot(slot_index: int, a: Attunement) -> void:
 	if attunements == null:
@@ -1792,6 +1791,10 @@ func fire_projectile(mode: RangedModeData):
 	if debug_hud:
 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
 
+	# Advance arm sequence for rigs using alternating weapon hands.
+	if crayola_rig:
+		crayola_rig.advance_sequence()
+
 func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true, check_los: bool = false) -> Node:
 	var mouse_pos := get_global_mouse_position()
 	var nearest: Node = null
@@ -1901,7 +1904,10 @@ func _fire_targeted_ranged_projectile(mode: RangedModeData, target: Node) -> voi
 		proj.get_node("ColorRect").color = mode.projectile_color
 
 func _get_projectile_spawn_base() -> Vector2:
-	return global_position + projectile_spawn_offset	
+	# Prefer weapon muzzle point when available.
+	if crayola_rig:
+		return crayola_rig.get_projectile_spawn_position()
+	return global_position + projectile_spawn_offset
 
 # ---- Spell System ----
 func _is_spell_channeled(spell: SpellData) -> bool:

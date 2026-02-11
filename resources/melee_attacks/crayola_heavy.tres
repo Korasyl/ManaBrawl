@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MeleeAttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/melee_attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+attack_name = "Crayola Heavy"
+animation_name = &"oneshot_heavy_attack"
+duration = 0.45
+hitbox_active_start = 0.12
+hitbox_active_end = 0.35
