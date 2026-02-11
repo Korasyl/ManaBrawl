@@ -47,6 +47,10 @@ class_name CrayolaRig
 ## Default 1.2 allows ~69° downward.
 @export var aim_angle_max: float = 1.2
 
+## Downward screen-space compensation (pixels) applied while aiming.
+## Positive values pull the arm aim slightly lower to align hand/muzzle with cursor.
+@export var aim_vertical_compensation: float = 10.0
+
 # ---- Internal State ----
 
 var _current_body_anim: StringName = &"idle"
@@ -54,6 +58,10 @@ var _facing_right: bool = true
 var _front_arm_angle: float = 0.0
 var _back_arm_angle: float = 0.0
 var _stomach_base_position: Vector2 = Vector2.ZERO
+var _front_arm_rest_rotation: float = 0.0
+var _back_arm_rest_rotation: float = 0.0
+var _front_forearm_rest_rotation: float = 0.0
+var _back_forearm_rest_rotation: float = 0.0
 
 ## Active weapon pose (set by player via apply_weapon_state)
 var _active_weapon_pose: WeaponPoseData = null
@@ -133,6 +141,12 @@ signal melee_hitbox_requested(active: bool)
 
 func _ready() -> void:
 	_stomach_base_position = stomach_pivot.position
+	_front_arm_rest_rotation = front_arm_pivot.rotation
+	_back_arm_rest_rotation = back_arm_pivot.rotation
+	_front_forearm_rest_rotation = front_forearm.rotation
+	_back_forearm_rest_rotation = back_forearm.rotation
+	_front_arm_angle = _front_arm_rest_rotation
+	_back_arm_angle = _back_arm_rest_rotation
 	scale = Vector2.ONE * rig_scale
 	_apply_pixel_settings(self)
 
@@ -296,7 +310,15 @@ func apply_weapon_state(pose: WeaponPoseData) -> void:
 ## aim_world_pos: mouse position in world coordinates.
 func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 	if not aim_active:
-		# No aiming — arms fully animation-driven
+		# No aiming — smoothly return to rest pose.
+		# (Especially important for rigs without AnimationTree blend tracks.)
+		var reset_lerp := 0.20 * arm_lerp_speed / 18.0
+		_front_arm_angle = lerp_angle(_front_arm_angle, _front_arm_rest_rotation, reset_lerp)
+		_back_arm_angle = lerp_angle(_back_arm_angle, _back_arm_rest_rotation, reset_lerp)
+		front_arm_pivot.rotation = _front_arm_angle
+		back_arm_pivot.rotation = _back_arm_angle
+		front_forearm.rotation = lerp_angle(front_forearm.rotation, _front_forearm_rest_rotation, reset_lerp)
+		back_forearm.rotation = lerp_angle(back_forearm.rotation, _back_forearm_rest_rotation, reset_lerp)
 		return
 
 	var flags := _get_current_aim_flags()
@@ -305,17 +327,18 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		flags = 1
 
 	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
+	var compensated_aim_world_pos := aim_world_pos + Vector2(0, aim_vertical_compensation)
 
 	# Front arm code aim
 	if flags & 1:
-		var target := _compute_aim_angle(front_arm_pivot.global_position, aim_world_pos)
+		var target := _compute_aim_angle(front_arm_pivot.global_position, compensated_aim_world_pos)
 		_front_arm_angle = lerp_angle(_front_arm_angle, target, lerp_factor)
 		front_arm_pivot.rotation = _front_arm_angle
 		front_forearm.rotation = _front_arm_angle * 0.25
 
 	# Back arm code aim
 	if flags & 2:
-		var target := _compute_aim_angle(back_arm_pivot.global_position, aim_world_pos)
+		var target := _compute_aim_angle(back_arm_pivot.global_position, compensated_aim_world_pos)
 		_back_arm_angle = lerp_angle(_back_arm_angle, target, lerp_factor)
 		back_arm_pivot.rotation = _back_arm_angle
 		back_forearm.rotation = _back_arm_angle * 0.25

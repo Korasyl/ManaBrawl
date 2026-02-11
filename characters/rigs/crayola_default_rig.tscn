@@ -47,6 +47,7 @@ _data = {
 
 [node name="CrayolaRig" type="Node2D" unique_id=87643186]
 script = ExtResource("1_rig")
+aim_vertical_compensation = 14.0
 
 [node name="StomachPivot" type="Node2D" parent="." unique_id=369431116]
 position = Vector2(0, -25)

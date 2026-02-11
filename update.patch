@@ -1,288 +1,56 @@
-diff --git a/characters/player.gd b/characters/player.gd
-index 0ca6dd82da98d917f4838001b261ebd3b788319f..7988ec0c825b6ea43f60b07e43200aa4c269a4be 100644
---- a/characters/player.gd
-+++ b/characters/player.gd
-@@ -1036,56 +1036,54 @@ func update_arms() -> void:
+diff --git a/characters/rigs/crayola_default_rig.tscn b/characters/rigs/crayola_default_rig.tscn
+index 5eb89eb3a362fc720abd17860864b29fe1d41184..667cc10c777aaeec40ddd28c2925258b31804a96 100644
+--- a/characters/rigs/crayola_default_rig.tscn
++++ b/characters/rigs/crayola_default_rig.tscn
+@@ -25,50 +25,51 @@ length = 0.3
+ [sub_resource type="Animation" id="Animation_oneshot_heavy_attack"]
+ resource_name = "oneshot_heavy_attack"
+ length = 0.45
  
- 	crayola_rig.set_facing_right(not animated_sprite.flip_h)
  
- 	# ---- Resolve active weapon pose (priority: spell > ranged > default) ----
- 	var pose: WeaponPoseData = null
+ [sub_resource type="Animation" id="Animation_arm_hip_rest"]
+ resource_name = "arm_hip_rest"
+ length = 1.0
+ loop_mode = 1
  
- 	if queued_spell_index >= 0 and queued_spell_index < spell_slots.size():
- 		var spell := spell_slots[queued_spell_index]
- 		if spell and spell.weapon_pose:
- 			pose = spell.weapon_pose
+ [sub_resource type="Animation" id="Animation_arm_wand_ready"]
+ resource_name = "arm_wand_ready"
+ length = 1.0
+ loop_mode = 1
+ [sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
+ _data = {
+ &"arm_hip_rest": SubResource("Animation_arm_hip_rest"),
+ &"arm_wand_ready": SubResource("Animation_arm_wand_ready"),
+ &"idle": SubResource("Animation_idle"),
+ &"oneshot_heavy_attack": SubResource("Animation_oneshot_heavy_attack"),
+ &"oneshot_light_attack": SubResource("Animation_oneshot_light_attack")
+ }
  
- 	if pose == null and is_in_ranged_mode:
- 		var rm := stats.ranged_mode if stats and stats.ranged_mode else _default_ranged_mode
- 		if rm.weapon_pose:
- 			pose = rm.weapon_pose
+ [node name="CrayolaRig" type="Node2D" unique_id=87643186]
+ script = ExtResource("1_rig")
++aim_vertical_compensation = 14.0
  
- 	if pose == null and stats:
- 		pose = stats.default_weapon_pose
+ [node name="StomachPivot" type="Node2D" parent="." unique_id=369431116]
+ position = Vector2(0, -25)
  
- 	# ---- Apply weapon state only on change ----
- 	if pose != _current_weapon_pose:
- 		crayola_rig.apply_weapon_state(pose)
- 		_current_weapon_pose = pose
+ [node name="Stomach" type="Sprite2D" parent="StomachPivot" unique_id=267454639]
+ z_index = 4
+ position = Vector2(-5, -16)
+ texture = ExtResource("2_stomach")
+ centered = false
  
- 	# ---- Update aim tracking ----
--	var should_aim := arm_override_active and pose != null
-+	var should_aim := arm_override_active
- 	if should_aim:
--		var flags := crayola_rig.get_current_aim_flags()
--		if flags > 0:
--			crayola_rig.update_arm_aim(true, get_global_mouse_position())
--			return
-+		crayola_rig.update_arm_aim(true, get_global_mouse_position())
-+		return
+ [node name="ChestPivot" type="Node2D" parent="StomachPivot" unique_id=596155801]
  
- 	crayola_rig.update_arm_aim(false, Vector2.ZERO)
+ [node name="Chest" type="Sprite2D" parent="StomachPivot/ChestPivot" unique_id=1531807932]
+ z_index = 6
+ position = Vector2(-5, -16)
+ texture = ExtResource("3_chest")
+ centered = false
  
- func handle_attack_timers(delta):
- 	# Handle attack duration
- 	if is_attacking:
- 		attack_timer -= delta
- 		# Anim-event-free hitbox timing (for attacks without method call tracks)
- 		if crayola_rig and crayola_rig.get_active_melee_attack():
- 			var elapsed := (crayola_rig.get_active_melee_attack().duration - attack_timer)
- 			var should_be_active := crayola_rig.should_hitbox_be_active(elapsed)
- 			melee_collision.disabled = not should_be_active
- 		if attack_timer <= 0:
- 			end_attack()
- 	
- 	# Handle combo window
- 	if combo_window_timer > 0:
- 		combo_window_timer -= delta
- 		if combo_window_timer <= 0:
- 			can_combo = false
- 			combo_count = 0
- 			if debug_hud:
- 				debug_hud.log_action("[color=gray]Combo window expired[/color]")
- 	
- 	# Handle heavy attack charging — track is_charging_heavy for flinch immunity
-@@ -1733,75 +1731,79 @@ func _get_effective_ranged_mode() -> RangedModeData:
- func _spend_ranged_mana(mode: RangedModeData) -> bool:
- 	if mode.mana_cost <= 0.0:
- 		return true
- 	var mana_ctx := {
- 		ContextKeys.SOURCE: self,
- 		ContextKeys.ATTACK_ID: "ranged_basic",
- 		ContextKeys.DAMAGE_TYPE: mode.damage_type,
- 		ContextKeys.TEAM_ID: team_id,
- 	}
- 	var spent := use_mana(mode.mana_cost, "ranged_attack", mana_ctx)
- 	return spent > 0.0
+ [node name="NeckPivot" type="Node2D" parent="StomachPivot/ChestPivot" unique_id=543778232]
+ position = Vector2(-1, -8)
  
- func handle_ranged_mode():
- 	# Can't enter ranged mode during these states
- 	if is_attacking or is_blocking or is_coalescing or is_dashing:
- 		is_in_ranged_mode = false
- 		return
- 
- 	var mode := _get_effective_ranged_mode()
- 	if mode.mode_type == "none":
- 		is_in_ranged_mode = false
- 		return
- 
- 	if Input.is_action_pressed("ranged_mode"):
- 		is_in_ranged_mode = true
--		aim_direction = (get_global_mouse_position() - global_position).normalized()
-+		var spawn_base := _get_projectile_spawn_base()
-+		aim_direction = (get_global_mouse_position() - spawn_base).normalized()
- 
- 		# Fire on LMB (only if no spell queued)
- 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
- 			match mode.mode_type:
- 				"free_aim":
- 					if _spend_ranged_mana(mode):
- 						fire_projectile(mode)
- 				"targeted":
- 					if _fire_targeted_ranged(mode):
- 						ranged_cooldown_timer = mode.fire_cooldown
- 						if debug_hud:
- 							debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
- 	else:
- 		is_in_ranged_mode = false
- 
- func fire_projectile(mode: RangedModeData):
- 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
- 	var proj = scene.instantiate()
--	proj.global_position = _get_projectile_spawn_base() + aim_direction * 40
--	proj.direction = aim_direction
-+	var spawn_base := _get_projectile_spawn_base()
-+	var fire_dir := (get_global_mouse_position() - spawn_base).normalized()
-+	proj.global_position = spawn_base + fire_dir * 40
-+	proj.direction = fire_dir
- 	proj.speed = mode.projectile_speed
- 	proj.damage = mode.damage
- 	proj.damage_type = mode.damage_type
- 	proj.interrupt_type = mode.interrupt_type
-+	aim_direction = fire_dir
- 	proj.source = self
- 	proj.team_id = team_id
- 	get_tree().current_scene.add_child(proj)
- 	# Apply projectile color
- 	if proj.has_node("ColorRect"):
- 		proj.get_node("ColorRect").color = mode.projectile_color
- 	ranged_cooldown_timer = mode.fire_cooldown
- 
- 	if debug_hud:
- 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
- 
- 	# Advance arm sequence for rigs using alternating weapon hands.
- 	if crayola_rig:
- 		crayola_rig.advance_sequence()
- 
- func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true, check_los: bool = false) -> Node:
- 	var mouse_pos := get_global_mouse_position()
- 	var nearest: Node = null
- 	var nearest_dist := max_range_from_cursor
- 
- 	var candidates := get_tree().get_nodes_in_group("enemy")
- 	candidates.append_array(get_tree().get_nodes_in_group("training_dummy"))
- 	candidates.append_array(get_tree().get_nodes_in_group("player"))
- 
- 	for candidate in candidates:
-@@ -2157,135 +2159,137 @@ func cast_spell(index: int):
- 	# For targeted spells, require a valid target before resolving cast
- 	var target_body: Node = null
- 	if spell.cast_type == "targeted":
- 		target_body = _find_target_near_cursor(spell.can_target_allies, spell.can_target_enemies, _get_spell_requires_los(spell))
- 		if target_body == null:
- 			if debug_hud:
- 				debug_hud.log_action("[color=red]No target found[/color]")
- 			return
- 
- 	spell_cooldowns[index] = spell.cooldown
- 	_clear_spell_queue(false, true)
- 
- 	match spell.cast_type:
- 		"free_aim":
- 			_fire_spell_projectile(spell)
- 		"targeted":
- 			_fire_targeted_projectile(spell, target_body)
- 
- 	suppress_light_attack_release_once = true
- 	post_spell_melee_lockout_timer = POST_SPELL_MELEE_LOCKOUT
- 
- 	if debug_hud:
- 		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name)
- 
- func _fire_spell_projectile(spell: SpellData):
--	var dir := (get_global_mouse_position() - global_position).normalized()
-+	var spawn_base := _get_projectile_spawn_base()
-+	var dir := (get_global_mouse_position() - spawn_base).normalized()
- 	var spell_ctx := {
- 		ContextKeys.SOURCE: self,
- 		ContextKeys.SPELL_DATA: spell,
- 		ContextKeys.ATTACK_ID: spell.spell_name,
- 		ContextKeys.DAMAGE_TYPE: "spell",
- 		ContextKeys.CAST_DIRECTION: dir,
- 		ContextKeys.TEAM_ID: team_id,
- 		ContextKeys.IS_CHANNELED: false,
- 		ContextKeys.TARGETED_DELIVERY: _get_spell_targeted_delivery(spell),
- 	}
- 	var final_speed: float = spell.projectile_speed
- 	var final_damage: float = spell.damage
- 	if attunements:
- 		final_speed = float(attunements.modify_value(ModKeys.SPELL_PROJECTILE_SPEED, final_speed, spell_ctx))
- 		final_damage = float(attunements.modify_value(ModKeys.SPELL_DAMAGE, final_damage, spell_ctx))
- 	final_speed = maxf(0.0, final_speed)
- 	
- 	# If spell has a custom scene, spawn it directly (it handles its own behavior)
- 	if spell.spell_scene:
- 		spell_ctx[ContextKeys.PROJECTILE_SPEED] = final_speed
- 		spell_ctx[ContextKeys.DAMAGE] = final_damage
- 		_spawn_spell_scene(spell, _get_projectile_spawn_base() + dir * 40, dir, null, spell_ctx)
- 		return
- 
- 	# Default: fire a projectile
- 	var proj = projectile_scene.instantiate()
- 	proj.global_position = _get_projectile_spawn_base() + dir * 40
- 	proj.direction = dir
- 	proj.speed = final_speed
- 	proj.damage = final_damage
- 	proj.damage_type = "spell"
- 	proj.interrupt_type = spell.interrupt_type
- 	proj.source = self
- 	proj.team_id = team_id
- 	proj.spell_data = spell
- 	get_tree().current_scene.add_child(proj)
- 	if proj.has_node("ColorRect"):
- 		proj.get_node("ColorRect").color = spell.projectile_color
- 
- func _fire_targeted_projectile(spell: SpellData, target: Node):
--	var dir: Vector2 = (target.global_position - global_position).normalized()
-+	var spawn_base := _get_projectile_spawn_base()
-+	var dir: Vector2 = (target.global_position - spawn_base).normalized()
- 	var is_channeled_ctx: bool = is_channeling_spell and channel_spell_index >= 0 and channel_spell_index < spell_slots.size() and spell_slots[channel_spell_index] == spell
- 	var spell_ctx := {
- 		ContextKeys.SOURCE: self,
- 		ContextKeys.TARGET: target,
- 		ContextKeys.ATTACK_ID: spell.spell_name,
- 		ContextKeys.DAMAGE_TYPE: "spell",
- 		ContextKeys.TEAM_ID: team_id,
- 		ContextKeys.SPELL_DATA: spell,
- 		ContextKeys.CAST_DIRECTION: dir,
- 		ContextKeys.TARGETED_DELIVERY: _get_spell_targeted_delivery(spell),
- 		ContextKeys.IS_CHANNELED: is_channeled_ctx,
- 	}
- 
- 	var final_damage: float = spell.damage
- 	var final_speed: float = spell.projectile_speed
- 	var final_homing: float = spell.targeted_homing_turn_speed
- 	if attunements:
- 		final_damage = float(attunements.modify_value(ModKeys.SPELL_DAMAGE, final_damage, spell_ctx))
- 		final_speed = float(attunements.modify_value(ModKeys.SPELL_PROJECTILE_SPEED, final_speed, spell_ctx))
- 		final_homing = float(attunements.modify_value(ModKeys.SPELL_HOMING_TURN_SPEED, final_homing, spell_ctx))
- 	final_speed = maxf(0.0, final_speed)
- 	final_homing = maxf(0.0, final_homing)
- 	spell_ctx[ContextKeys.DAMAGE] = final_damage
- 	spell_ctx[ContextKeys.PROJECTILE_SPEED] = final_speed
- 	spell_ctx[ContextKeys.HOMING_TURN_SPEED] = final_homing
- 	
- 	var targeted_delivery: String = _get_spell_targeted_delivery(spell, target)
- 	spell_ctx[ContextKeys.TARGETED_DELIVERY] = targeted_delivery
- 	
- 	# Targeted application spells spawn directly at validated target.
- 	if targeted_delivery == "apply_at_target":
- 		if spell.spell_scene:
- 			_spawn_spell_scene(spell, target.global_position, dir, target, spell_ctx)
- 		else:
- 			var target_is_ally := is_ally(target)
- 			if target_is_ally and spell.heal_amount > 0.0 and target.has_method("apply_healing"):
- 				target.apply_healing(spell.heal_amount, spell_ctx)
- 			elif not target_is_ally and target.has_method("take_damage"):
- 				target.take_damage(final_damage, Vector2.ZERO, spell.interrupt_type, spell_ctx)
- 		return
- 		
- 	if spell.spell_scene:
--		_spawn_spell_scene(spell, global_position + dir * 40, dir, target, spell_ctx)
-+		_spawn_spell_scene(spell, spawn_base + dir * 40, dir, target, spell_ctx)
- 		return
- 
- 	var proj = projectile_scene.instantiate()
- 	proj.global_position = _get_projectile_spawn_base() + dir * 40
- 	proj.direction = dir
- 	proj.speed = final_speed
- 	proj.damage = final_damage
- 	proj.damage_type = "spell"
- 	proj.interrupt_type = spell.interrupt_type
- 	proj.source = self
- 	proj.team_id = team_id
- 	proj.spell_data = spell
- 	if proj is Projectile:
- 		proj.homing_target = target if target is Node2D else null
- 		proj.homing_turn_speed = spell.targeted_homing_turn_speed
- 	get_tree().current_scene.add_child(proj)
- 	if proj.has_node("ColorRect"):
- 		proj.get_node("ColorRect").color = spell.projectile_color
- 
- ## Spawn a spell's custom scene, passing it context for initialization.
- func _spawn_spell_scene(spell: SpellData, pos: Vector2, dir: Vector2 = Vector2.RIGHT, target: Node = null, extra_ctx: Dictionary = {}):
- 	var entity = spell.spell_scene.instantiate()
- 	entity.global_position = pos
- 
- 	# Set common fields if the scene supports them
+ [node name="Neck" type="Sprite2D" parent="StomachPivot/ChestPivot/NeckPivot" unique_id=407874103]
+ z_index = 5
+ position = Vector2(-4, -8)
+ texture = ExtResource("4_neck")

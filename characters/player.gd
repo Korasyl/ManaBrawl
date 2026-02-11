@@ -1775,7 +1775,7 @@ func fire_projectile(mode: RangedModeData):
 	var proj = scene.instantiate()
 	var spawn_base := _get_projectile_spawn_base()
 	var fire_dir := (get_global_mouse_position() - spawn_base).normalized()
-	proj.global_position = spawn_base + fire_dir * 40
+	proj.global_position = spawn_base
 	proj.direction = fire_dir
 	proj.speed = mode.projectile_speed
 	proj.damage = mode.damage
@@ -1887,7 +1887,7 @@ func _fire_targeted_ranged_projectile(mode: RangedModeData, target: Node) -> voi
 	var dir: Vector2 = (target_node.global_position - global_position).normalized()
 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
 	var proj = scene.instantiate()
-	proj.global_position = _get_projectile_spawn_base() + dir * 40
+	proj.global_position = _get_projectile_spawn_base()
 	proj.direction = dir
 	proj.speed = mode.projectile_speed
 	proj.damage = mode.targeted_burst_damage
@@ -2204,12 +2204,12 @@ func _fire_spell_projectile(spell: SpellData):
 	if spell.spell_scene:
 		spell_ctx[ContextKeys.PROJECTILE_SPEED] = final_speed
 		spell_ctx[ContextKeys.DAMAGE] = final_damage
-		_spawn_spell_scene(spell, _get_projectile_spawn_base() + dir * 40, dir, null, spell_ctx)
+		_spawn_spell_scene(spell, _get_projectile_spawn_base(), dir, null, spell_ctx)
 		return
 
 	# Default: fire a projectile
 	var proj = projectile_scene.instantiate()
-	proj.global_position = _get_projectile_spawn_base() + dir * 40
+	proj.global_position = _get_projectile_spawn_base()
 	proj.direction = dir
 	proj.speed = final_speed
 	proj.damage = final_damage
@@ -2267,11 +2267,11 @@ func _fire_targeted_projectile(spell: SpellData, target: Node):
 		return
 		
 	if spell.spell_scene:
-		_spawn_spell_scene(spell, spawn_base + dir * 40, dir, target, spell_ctx)
+		_spawn_spell_scene(spell, spawn_base, dir, target, spell_ctx)
 		return
 
 	var proj = projectile_scene.instantiate()
-	proj.global_position = _get_projectile_spawn_base() + dir * 40
+	proj.global_position = _get_projectile_spawn_base()
 	proj.direction = dir
 	proj.speed = final_speed
 	proj.damage = final_damage
