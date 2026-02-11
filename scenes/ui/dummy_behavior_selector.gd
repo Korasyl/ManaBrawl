@@ -16,14 +16,16 @@ const MODE_LABELS := [
 ]
 
 func _ready() -> void:
-	_dummy = _resolve_dummy()
-	if _dummy == null:
-		push_error("DummyBehaviorSelector: Dummy not found. Set dummy_path or add to group 'training_dummy'.")
-		return
-
-	_populate_dropdown()
 	dropdown.item_selected.connect(_on_item_selected)
 	dropdown.focus_mode = Control.FOCUS_NONE
+	_populate_dropdown()
+	refresh_binding()
+
+func refresh_binding() -> void:
+	_dummy = _resolve_dummy()
+	visible = _dummy != null
+	if _dummy and "behavior_mode" in _dummy:
+		dropdown.select(int(_dummy.behavior_mode))
 
 func _resolve_dummy() -> Node:
 	if dummy_path != NodePath():
@@ -41,5 +43,7 @@ func _populate_dropdown() -> void:
 		dropdown.add_item(MODE_LABELS[i], i)
 
 func _on_item_selected(index: int) -> void:
+	if _dummy == null:
+		refresh_binding()
 	if _dummy and _dummy.has_method("set_behavior_mode"):
 		_dummy.set_behavior_mode(index)

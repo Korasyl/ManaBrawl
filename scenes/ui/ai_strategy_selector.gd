@@ -10,16 +10,15 @@ var _opponent: Node = null
 var _loaded_strategies: Array[AIStrategy] = []
 
 func _ready() -> void:
-	_opponent = _resolve_opponent()
-	if _opponent == null:
-		push_error("AIStrategySelector: AI opponent not found. Set opponent_path or add to group 'ai_opponent'.")
-		return
-
 	_loaded_strategies = _gather_strategies()
-	_populate_dropdown()
-
 	dropdown.item_selected.connect(_on_item_selected)
 	dropdown.focus_mode = Control.FOCUS_NONE
+	refresh_binding()
+
+func refresh_binding() -> void:
+	_opponent = _resolve_opponent()
+	visible = _opponent != null
+	_populate_dropdown()
 
 func _resolve_opponent() -> Node:
 	if opponent_path != NodePath():
@@ -67,5 +66,7 @@ func _populate_dropdown() -> void:
 func _on_item_selected(index: int) -> void:
 	if index < 0 or index >= _loaded_strategies.size():
 		return
+	if _opponent == null:
+		refresh_binding()
 	if _opponent and _opponent.has_method("set_strategy"):
 		_opponent.set_strategy(_loaded_strategies[index])

@@ -7,8 +7,9 @@
 [ext_resource type="PackedScene" uid="uid://o351sfl3a6pq" path="res://scenes/ui/attunement_selector.tscn" id="6_tskly"]
 [ext_resource type="PackedScene" path="res://scenes/ui/spell_selector.tscn" id="8_spsel"]
 [ext_resource type="Script" uid="uid://0amifnjysv4v" path="res://scripts/dynamic_camera.gd" id="9_dyncam"]
-[ext_resource type="PackedScene" uid="uid://ct6vw7jdaxb6i" path="res://characters/training_dummy.tscn" id="9_tki6j"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ai_strategy_selector.tscn" id="11_aisel"]
+[ext_resource type="PackedScene" uid="uid://bameytsdik84q" path="res://scenes/ui/dummy_behavior_selector.tscn" id="12_dumsel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/opponent_mode_selector.tscn" id="13_opsel"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_al67s"]
 size = Vector2(1000, 50)
@@ -155,5 +156,16 @@ offset_top = 9.0
 offset_right = -1238.0
 offset_bottom = -1022.0
 
-[node name="TrainingDummy" parent="." unique_id=975334861 instance=ExtResource("9_tki6j")]
-position = Vector2(-313, 452)
+[node name="DummyBehaviorSelector" parent="UILayer" unique_id=2055011001 instance=ExtResource("12_dumsel")]
+offset_left = 486.0
+offset_top = 70.0
+offset_right = -1238.0
+offset_bottom = -961.0
+
+[node name="OpponentModeSelector" parent="UILayer" unique_id=1175001003 instance=ExtResource("13_opsel")]
+offset_left = 1679.0
+offset_top = 14.0
+offset_right = -36.0
+offset_bottom = -1017.0
+dummy_selector_path = NodePath("../DummyBehaviorSelector")
+ai_selector_path = NodePath("../AIStrategySelector")

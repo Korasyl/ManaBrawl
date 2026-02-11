@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene format=3 uid="uid://dsrxhfap0ucu5"]
 
 [ext_resource type="Script" uid="uid://b48wi5kqmdndm" path="res://scripts/visuals/crayola_rig.gd" id="1_rig"]
 [ext_resource type="Texture2D" uid="uid://cyxkufsdvf5ye" path="res://sprites/crayola/bodyparts/Crayola_Stomach.png" id="2_stomach"]
@@ -14,28 +14,26 @@
 [ext_resource type="Texture2D" uid="uid://qcw1dqkpejp6" path="res://sprites/crayola/bodyparts/Crayola_Back_Arm.png" id="12_barm"]
 [ext_resource type="Texture2D" uid="uid://c6doc67hmr6er" path="res://sprites/crayola/bodyparts/Crayola_Back_Hand.png" id="13_bhand"]
 
+[sub_resource type="Animation" id="Animation_arm_hip_rest"]
+resource_name = "arm_hip_rest"
+loop_mode = 1
+
+[sub_resource type="Animation" id="Animation_arm_wand_ready"]
+resource_name = "arm_wand_ready"
+loop_mode = 1
+
 [sub_resource type="Animation" id="Animation_idle"]
 resource_name = "idle"
 loop_mode = 1
-
-[sub_resource type="Animation" id="Animation_oneshot_light_attack"]
-resource_name = "oneshot_light_attack"
-length = 0.3
 
 [sub_resource type="Animation" id="Animation_oneshot_heavy_attack"]
 resource_name = "oneshot_heavy_attack"
 length = 0.45
 
+[sub_resource type="Animation" id="Animation_oneshot_light_attack"]
+resource_name = "oneshot_light_attack"
+length = 0.3
 
-[sub_resource type="Animation" id="Animation_arm_hip_rest"]
-resource_name = "arm_hip_rest"
-length = 1.0
-loop_mode = 1
-
-[sub_resource type="Animation" id="Animation_arm_wand_ready"]
-resource_name = "arm_wand_ready"
-length = 1.0
-loop_mode = 1
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
 _data = {
 &"arm_hip_rest": SubResource("Animation_arm_hip_rest"),
@@ -102,6 +100,9 @@ position = Vector2(-1, -16)
 texture = ExtResource("11_fhand")
 centered = false
 
+[node name="FrontHandWeaponAnchor" type="Node2D" parent="StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot" unique_id=2050008751]
+position = Vector2(0, 8)
+
 [node name="BackArmPivot" type="Node2D" parent="StomachPivot/ChestPivot" unique_id=581286312]
 position = Vector2(2, -8)
 
@@ -118,6 +119,9 @@ z_index = 1
 position = Vector2(-8, -16)
 texture = ExtResource("13_bhand")
 centered = false
+
+[node name="BackHandWeaponAnchor" type="Node2D" parent="StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot" unique_id=1703948537]
+position = Vector2(1, 8)
 
 [node name="FrontLegPivot" type="Node2D" parent="StomachPivot" unique_id=1122603521]
 position = Vector2(-1, 6)

@@ -36,6 +36,7 @@ var team_id: int = 0
 
 ## HUD reference (we'll set this from the scene)
 var debug_hud: Control = null
+@export var enable_debug_logs: bool = false
 
 ## Current state
 var current_health: float
@@ -221,13 +222,18 @@ func _ready():
 	if color_rect:
 		color_rect.visible = false
 
-	print("Found debug HUD: ", debug_hud)
+	_debug_log("Found debug HUD: %s" % [debug_hud])
 	if debug_hud:
 		update_hud()
 	else:
-		print("ERROR: Debug HUD not found!")
+		_debug_log("ERROR: Debug HUD not found!")
 		
 	_load_character_rig()
+
+func _debug_log(message: String) -> void:
+	if enable_debug_logs:
+		print(message)
+
 
 func _load_character_rig() -> void:
 	"""Load the character-specific rig scene from stats, or keep default."""
@@ -651,7 +657,7 @@ func use_mana(amount: float, reason: String = "", ctx: Dictionary = {}) -> float
 
 func update_hud():
 	if not debug_hud:
-		print("DEBUG HUD IS NULL!")
+		_debug_log("DEBUG HUD IS NULL!")
 		return
 	
 	# Update mana and health
@@ -1045,8 +1051,8 @@ func update_arms() -> void:
 			pose = spell.weapon_pose
 
 	if pose == null and is_in_ranged_mode:
-		var rm := stats.ranged_mode if stats and stats.ranged_mode else _default_ranged_mode
-		if rm.weapon_pose:
+		var rm := _get_effective_ranged_mode()
+		if rm and rm.weapon_pose:
 			pose = rm.weapon_pose
 
 	if pose == null and stats:
@@ -1461,7 +1467,7 @@ func apply_healing(amount: float, _ctx: Dictionary = {}) -> void:
 	current_health = min(current_health + amount, stats.max_health)
 
 func take_damage(damage: float, knockback_velocity: Vector2 = Vector2.ZERO, interrupt_type: String = "none", ctx: Dictionary = {}):
-	print("PLAYER: take_damage called! damage=%.1f, knockback=%s, type=%s" % [damage, knockback_velocity, interrupt_type])
+	_debug_log("PLAYER: take_damage called! damage=%.1f, knockback=%s, type=%s" % [damage, knockback_velocity, interrupt_type])
 	if is_dead:
 		return
 	

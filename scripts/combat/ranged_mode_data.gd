@@ -24,7 +24,7 @@ class_name RangedModeData
 @export var move_speed_mult: float = 0.7  # Movement speed while in ranged mode
 
 ## Targeted delivery options (used when mode_type == "targeted")
-@export var targeted_max_range_from_cursor: float = 220.0
+@export var targeted_max_range_from_cursor: float = 10.0
 @export var targeted_allow_self: bool = true
 @export var targeted_affect_allies: bool = true
 @export var targeted_affect_enemies: bool = true

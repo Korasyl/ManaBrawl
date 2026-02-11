@@ -1,11 +1,12 @@
-[gd_resource type="Resource" script_class="WeaponPoseData" format=3]
+[gd_resource type="Resource" script_class="WeaponPoseData" format=3 uid="uid://dbxo2pijvojvl"]
 
-[ext_resource type="Script" path="res://scripts/resources/weapon_pose_data.gd" id="1_pose"]
+[ext_resource type="Script" uid="uid://cad4mr7qyx4d1" path="res://scripts/resources/weapon_pose_data.gd" id="1_pose"]
+[ext_resource type="Script" uid="uid://buhm5lm46wb5q" path="res://scripts/resources/arm_sequence_step.gd" id="2_wcudb"]
 [ext_resource type="PackedScene" path="res://characters/weapons/crayola_wand.tscn" id="2_weapon"]
 
 [resource]
 script = ExtResource("1_pose")
 aim_arm_flags = 1
+back_arm_animation = &"arm_hip_rest"
 weapon_scene = ExtResource("2_weapon")
 weapon_hand = "Front"
-back_arm_animation = &"arm_hip_rest"

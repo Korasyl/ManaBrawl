@@ -83,8 +83,12 @@ var _blend_speed: float = 10.0
 @onready var chest_pivot: Node2D = $StomachPivot/ChestPivot
 @onready var back_arm_pivot: Node2D = $StomachPivot/ChestPivot/BackArmPivot
 @onready var back_forearm: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot
+@onready var back_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHand
+@onready var back_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor if has_node("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor") else null
 @onready var front_arm_pivot: Node2D = $StomachPivot/ChestPivot/FrontArmPivot
 @onready var front_forearm: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot
+@onready var front_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHand
+@onready var front_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor if has_node("StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor") else null
 
 ## AnimationPlayer for body + arm clips. Add this node to your rig scene.
 @onready var anim_player: AnimationPlayer = $AnimationPlayer if has_node("AnimationPlayer") else null
@@ -319,6 +323,7 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		back_arm_pivot.rotation = _back_arm_angle
 		front_forearm.rotation = lerp_angle(front_forearm.rotation, _front_forearm_rest_rotation, reset_lerp)
 		back_forearm.rotation = lerp_angle(back_forearm.rotation, _back_forearm_rest_rotation, reset_lerp)
+		_sync_weapon_rotation_to_hand()
 		return
 
 	var flags := _get_current_aim_flags()
@@ -342,6 +347,8 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		_back_arm_angle = lerp_angle(_back_arm_angle, target, lerp_factor)
 		back_arm_pivot.rotation = _back_arm_angle
 		back_forearm.rotation = _back_arm_angle * 0.25
+
+	_sync_weapon_rotation_to_hand()
 
 ## Advance the arm sequence to the next step (call on fire, cooldown start, etc.)
 func advance_sequence() -> void:
@@ -484,6 +491,8 @@ func _attach_weapon(pose: WeaponPoseData) -> void:
 	var parent := _get_weapon_parent(pose.weapon_hand)
 	if parent:
 		parent.add_child(_current_weapon_node)
+		_sync_weapon_visual_to_hand(pose.weapon_hand)
+		_sync_weapon_rotation_to_hand()
 
 func _detach_weapon() -> void:
 	if _current_weapon_node and is_instance_valid(_current_weapon_node):
@@ -504,15 +513,64 @@ func _update_weapon_hand(hand: String) -> void:
 	if current_parent != target_parent and target_parent:
 		current_parent.remove_child(_current_weapon_node)
 		target_parent.add_child(_current_weapon_node)
+	_sync_weapon_visual_to_hand(hand)
+	_sync_weapon_rotation_to_hand()
 
 func _get_weapon_parent(hand: String) -> Node2D:
 	match hand:
 		"Front":
+			if front_hand_weapon_anchor:
+				return front_hand_weapon_anchor
 			return front_forearm
 		"Back":
+			if back_hand_weapon_anchor:
+				return back_hand_weapon_anchor
 			return back_forearm
 		_:
 			return null
+
+func _sync_weapon_visual_to_hand(hand: String) -> void:
+	if _current_weapon_node == null or not is_instance_valid(_current_weapon_node):
+		return
+
+	_current_weapon_node.z_as_relative = true
+
+	match hand:
+		"Front":
+			if front_hand_sprite:
+				_current_weapon_node.z_index = front_hand_sprite.z_index
+		"Back":
+			if back_hand_sprite:
+				_current_weapon_node.z_index = back_hand_sprite.z_index
+		_:
+			pass
+
+func _get_current_weapon_hand() -> String:
+	if _active_weapon_pose == null:
+		return "None"
+	if _active_weapon_pose.use_arm_sequence and not _active_weapon_pose.sequence_steps.is_empty():
+		var step := _active_weapon_pose.sequence_steps[_sequence_index]
+		return step.weapon_hand
+	return _active_weapon_pose.weapon_hand
+
+func _sync_weapon_rotation_to_hand() -> void:
+	if _current_weapon_node == null or not is_instance_valid(_current_weapon_node):
+		return
+
+	var hand := _get_current_weapon_hand()
+	match hand:
+		"Front":
+			if front_hand_weapon_anchor:
+				_current_weapon_node.global_rotation = front_hand_weapon_anchor.global_rotation
+			elif front_forearm:
+				_current_weapon_node.global_rotation = front_forearm.global_rotation
+		"Back":
+			if back_hand_weapon_anchor:
+				_current_weapon_node.global_rotation = back_hand_weapon_anchor.global_rotation
+			elif back_forearm:
+				_current_weapon_node.global_rotation = back_forearm.global_rotation
+		_:
+			pass
 
 # ---- Utility ----
 
