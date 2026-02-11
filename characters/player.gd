@@ -1058,12 +1058,10 @@ func update_arms() -> void:
 		_current_weapon_pose = pose
 
 	# ---- Update aim tracking ----
-	var should_aim := arm_override_active and pose != null
+	var should_aim := arm_override_active
 	if should_aim:
-		var flags := crayola_rig.get_current_aim_flags()
-		if flags > 0:
-			crayola_rig.update_arm_aim(true, get_global_mouse_position())
-			return
+		crayola_rig.update_arm_aim(true, get_global_mouse_position())
+		return
 
 	crayola_rig.update_arm_aim(false, Vector2.ZERO)
 
@@ -1755,7 +1753,8 @@ func handle_ranged_mode():
 
 	if Input.is_action_pressed("ranged_mode"):
 		is_in_ranged_mode = true
-		aim_direction = (get_global_mouse_position() - global_position).normalized()
+		var spawn_base := _get_projectile_spawn_base()
+		aim_direction = (get_global_mouse_position() - spawn_base).normalized()
 
 		# Fire on LMB (only if no spell queued)
 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
@@ -1774,12 +1773,15 @@ func handle_ranged_mode():
 func fire_projectile(mode: RangedModeData):
 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
 	var proj = scene.instantiate()
-	proj.global_position = _get_projectile_spawn_base() + aim_direction * 40
-	proj.direction = aim_direction
+	var spawn_base := _get_projectile_spawn_base()
+	var fire_dir := (get_global_mouse_position() - spawn_base).normalized()
+	proj.global_position = spawn_base + fire_dir * 40
+	proj.direction = fire_dir
 	proj.speed = mode.projectile_speed
 	proj.damage = mode.damage
 	proj.damage_type = mode.damage_type
 	proj.interrupt_type = mode.interrupt_type
+	aim_direction = fire_dir
 	proj.source = self
 	proj.team_id = team_id
 	get_tree().current_scene.add_child(proj)
@@ -2179,7 +2181,8 @@ func cast_spell(index: int):
 		debug_hud.log_action("[color=violet]Cast: %s[/color]" % spell.spell_name)
 
 func _fire_spell_projectile(spell: SpellData):
-	var dir := (get_global_mouse_position() - global_position).normalized()
+	var spawn_base := _get_projectile_spawn_base()
+	var dir := (get_global_mouse_position() - spawn_base).normalized()
 	var spell_ctx := {
 		ContextKeys.SOURCE: self,
 		ContextKeys.SPELL_DATA: spell,
@@ -2220,7 +2223,8 @@ func _fire_spell_projectile(spell: SpellData):
 		proj.get_node("ColorRect").color = spell.projectile_color
 
 func _fire_targeted_projectile(spell: SpellData, target: Node):
-	var dir: Vector2 = (target.global_position - global_position).normalized()
+	var spawn_base := _get_projectile_spawn_base()
+	var dir: Vector2 = (target.global_position - spawn_base).normalized()
 	var is_channeled_ctx: bool = is_channeling_spell and channel_spell_index >= 0 and channel_spell_index < spell_slots.size() and spell_slots[channel_spell_index] == spell
 	var spell_ctx := {
 		ContextKeys.SOURCE: self,
@@ -2263,7 +2267,7 @@ func _fire_targeted_projectile(spell: SpellData, target: Node):
 		return
 		
 	if spell.spell_scene:
-		_spawn_spell_scene(spell, global_position + dir * 40, dir, target, spell_ctx)
+		_spawn_spell_scene(spell, spawn_base + dir * 40, dir, target, spell_ctx)
 		return
 
 	var proj = projectile_scene.instantiate()

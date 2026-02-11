@@ -8,3 +8,4 @@ script = ExtResource("1_pose")
 aim_arm_flags = 1
 weapon_scene = ExtResource("2_weapon")
 weapon_hand = "Front"
+back_arm_animation = &"arm_hip_rest"

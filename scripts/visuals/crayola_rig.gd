@@ -295,11 +295,15 @@ func apply_weapon_state(pose: WeaponPoseData) -> void:
 ## aim_active: whether any arm should be code-driven this frame.
 ## aim_world_pos: mouse position in world coordinates.
 func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
-	if not aim_active or _active_weapon_pose == null:
+	if not aim_active:
 		# No aiming — arms fully animation-driven
 		return
 
 	var flags := _get_current_aim_flags()
+	# Fallback: if no pose/flags are configured, still aim the front arm for free-aim gameplay.
+	if flags == 0:
+		flags = 1
+
 	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
 
 	# Front arm code aim
