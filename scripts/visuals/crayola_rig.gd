@@ -66,6 +66,7 @@ var _back_forearm_rest_rotation: float = 0.0
 ## Active weapon pose (set by player via apply_weapon_state)
 var _active_weapon_pose: WeaponPoseData = null
 var _current_weapon_node: Node2D = null
+var _current_weapon_scene: PackedScene = null  # Tracks attached weapon scene to skip redundant re-creation
 
 ## Arm sequence state
 var _sequence_index: int = 0
@@ -75,6 +76,9 @@ var _sequence_auto_timer: float = 0.0
 var _front_arm_code_blend: float = 0.0  # 0 = animation, 1 = code aim
 var _back_arm_code_blend: float = 0.0
 var _blend_speed: float = 10.0
+
+## Tracks the currently playing oneshot animation name (for signal filtering).
+var _active_oneshot_anim: StringName = &""
 
 # ---- Node References ----
 # Subclasses can override these paths if their hierarchy differs.
@@ -429,20 +433,24 @@ func _process_sequence_auto_advance(delta: float) -> void:
 			advance_sequence()
 
 func _apply_arm_animations(pose: WeaponPoseData) -> void:
-	if not anim_tree:
-		return
-	if pose.front_arm_animation != &"":
-		anim_tree.set("parameters/front_arm_anim/animation", pose.front_arm_animation)
-	if pose.back_arm_animation != &"":
-		anim_tree.set("parameters/back_arm_anim/animation", pose.back_arm_animation)
+	_set_arm_anims(pose.front_arm_animation, pose.back_arm_animation)
 
 func _apply_arm_animations_from_step(step: ArmSequenceStep) -> void:
-	if not anim_tree:
-		return
-	if step.front_arm_animation != &"":
-		anim_tree.set("parameters/front_arm_anim/animation", step.front_arm_animation)
-	if step.back_arm_animation != &"":
-		anim_tree.set("parameters/back_arm_anim/animation", step.back_arm_animation)
+	_set_arm_anims(step.front_arm_animation, step.back_arm_animation)
+
+func _set_arm_anims(front_anim: StringName, back_anim: StringName) -> void:
+	if anim_tree:
+		if front_anim != &"":
+			anim_tree.set("parameters/front_arm_anim/animation", front_anim)
+		if back_anim != &"":
+			anim_tree.set("parameters/back_arm_anim/animation", back_anim)
+	elif anim_player:
+		# Fallback: play arm animations directly on the AnimationPlayer.
+		# Non-aiming arms get their pose clip; aiming arms are code-driven.
+		if back_anim != &"" and anim_player.has_animation(back_anim):
+			anim_player.play(back_anim)
+		elif front_anim != &"" and anim_player.has_animation(front_anim):
+			anim_player.play(front_anim)
 
 func _compute_aim_angle(shoulder_pos: Vector2, aim_world_pos: Vector2) -> float:
 	var world_dir := aim_world_pos - shoulder_pos
@@ -467,26 +475,35 @@ func _set_tree_body_state(anim: StringName) -> void:
 		anim_tree.set("parameters/body_anim/animation", anim)
 
 func _play_oneshot(anim_name: StringName) -> void:
+	_active_oneshot_anim = anim_name
 	if anim_tree:
 		# Trigger the one-shot layer
-		var oneshot = anim_tree.get("parameters/oneshot/request")
-		if oneshot != null:
-			anim_tree.set("parameters/oneshot_anim/animation", anim_name)
-			anim_tree.set("parameters/oneshot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
+		anim_tree.set("parameters/oneshot_anim/animation", anim_name)
+		anim_tree.set("parameters/oneshot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 	elif anim_player and anim_player.has_animation(anim_name):
 		anim_player.play(anim_name)
 
 func _on_animation_finished(anim_name: StringName) -> void:
-	transition_finished.emit(anim_name)
+	# Only emit for oneshot/transition animations, not looping body anims.
+	if anim_name == _active_oneshot_anim:
+		_active_oneshot_anim = &""
+		transition_finished.emit(anim_name)
 
 # ---- Weapon Management ----
 
 func _attach_weapon(pose: WeaponPoseData) -> void:
-	_detach_weapon()
-
 	if pose.weapon_scene == null or pose.weapon_hand == "None":
+		_detach_weapon()
 		return
 
+	# Skip re-instantiation if the same weapon scene is already attached.
+	if pose.weapon_scene == _current_weapon_scene and is_instance_valid(_current_weapon_node):
+		# Weapon scene unchanged — just re-parent if hand changed.
+		_update_weapon_hand(pose.weapon_hand)
+		return
+
+	_detach_weapon()
+	_current_weapon_scene = pose.weapon_scene
 	_current_weapon_node = pose.weapon_scene.instantiate()
 	var parent := _get_weapon_parent(pose.weapon_hand)
 	if parent:
@@ -497,7 +514,8 @@ func _attach_weapon(pose: WeaponPoseData) -> void:
 func _detach_weapon() -> void:
 	if _current_weapon_node and is_instance_valid(_current_weapon_node):
 		_current_weapon_node.queue_free()
-		_current_weapon_node = null
+	_current_weapon_node = null
+	_current_weapon_scene = null
 
 func _update_weapon_hand(hand: String) -> void:
 	if _current_weapon_node == null or not is_instance_valid(_current_weapon_node):

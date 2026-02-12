@@ -1030,10 +1030,6 @@ func update_animation():
 	else:
 		anim = "idle"
 	
-	# Play the animation if it's different from current
-	##if animated_sprite.animation != anim:
-	##	animated_sprite.play(anim)
-	
 	# Store for arm sync and debug HUD
 	current_body_anim = anim
 	if debug_hud:
@@ -1172,9 +1168,9 @@ func perform_light_attack():
 		attack_timer = attack_data.duration
 		if crayola_rig:
 			crayola_rig.play_melee_attack(attack_data)
-		# If using anim events, DON'T enable hitbox here — anim will trigger it
-		if not attack_data.use_anim_events:
-			melee_collision.disabled = false
+		# Hitbox activation is handled by handle_attack_timers (timer-based)
+		# or by anim events (_on_melee_hitbox_requested). Don't enable here
+		# to avoid 1-frame early activation before hitbox_active_start.
 	else:
 		attack_timer = stats.light_attack_duration
 		melee_collision.disabled = false
@@ -1197,8 +1193,7 @@ func perform_heavy_attack():
 		attack_timer = attack_data.duration
 		if crayola_rig:
 			crayola_rig.play_melee_attack(attack_data)
-		if not attack_data.use_anim_events:
-			melee_collision.disabled = false
+		# Hitbox managed by handle_attack_timers / anim events — not here.
 	else:
 		attack_timer = stats.heavy_attack_duration
 		melee_collision.disabled = false
