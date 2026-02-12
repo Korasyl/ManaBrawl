@@ -1759,8 +1759,7 @@ func handle_ranged_mode():
 
 	if Input.is_action_pressed("ranged_mode"):
 		is_in_ranged_mode = true
-		var spawn_base := _get_projectile_spawn_base()
-		aim_direction = (get_global_mouse_position() - spawn_base).normalized()
+		aim_direction = _get_fire_direction()
 
 		# Fire on LMB (only if no spell queued)
 		if Input.is_action_just_pressed("light_attack") and ranged_cooldown_timer <= 0 and queued_spell_index < 0:
@@ -1780,7 +1779,7 @@ func fire_projectile(mode: RangedModeData):
 	var scene := mode.projectile_scene if mode.projectile_scene else projectile_scene
 	var proj = scene.instantiate()
 	var spawn_base := _get_projectile_spawn_base()
-	var fire_dir := (get_global_mouse_position() - spawn_base).normalized()
+	var fire_dir := _get_fire_direction()
 	proj.global_position = spawn_base
 	proj.direction = fire_dir
 	proj.speed = mode.projectile_speed
@@ -1916,6 +1915,16 @@ func _get_projectile_spawn_base() -> Vector2:
 	if crayola_rig:
 		return crayola_rig.get_projectile_spawn_position()
 	return global_position + projectile_spawn_offset
+
+## Get the canonical fire direction. Uses the rig's unified aim direction
+## (computed from chest → cursor, clamped to forward hemisphere) so the
+## arm visual, aim line, and projectile all agree on direction.
+## Falls back to muzzle→cursor when no rig is available.
+func _get_fire_direction() -> Vector2:
+	if crayola_rig:
+		return crayola_rig.get_aim_direction()
+	var spawn_base := _get_projectile_spawn_base()
+	return (get_global_mouse_position() - spawn_base).normalized()
 
 # ---- Spell System ----
 func _is_spell_channeled(spell: SpellData) -> bool:
@@ -2188,7 +2197,7 @@ func cast_spell(index: int):
 
 func _fire_spell_projectile(spell: SpellData):
 	var spawn_base := _get_projectile_spawn_base()
-	var dir := (get_global_mouse_position() - spawn_base).normalized()
+	var dir := _get_fire_direction()
 	var spell_ctx := {
 		ContextKeys.SOURCE: self,
 		ContextKeys.SPELL_DATA: spell,
@@ -2559,7 +2568,7 @@ func _draw():
 		var origin_g := _get_projectile_spawn_base()          # global spawn origin (same as projectiles)
 		var origin_l := origin_g - global_position            # convert to local space for _draw()
 
-		var dir := (get_global_mouse_position() - origin_g).normalized()
+		var dir := _get_fire_direction()                      # unified direction from rig
 		var aim_end := origin_l + dir * 120
 
 		var line_color: Color
