@@ -168,9 +168,7 @@ func play_weapon_animation(anim_name: StringName) -> void:
 ## Get the currently held weapon as a WeaponSprite from a rig.
 ## Static helper for external systems.
 static func get_from_rig(rig: CrayolaRig) -> WeaponSprite:
-	if rig._current_weapon_node and rig._current_weapon_node is WeaponSprite:
-		return rig._current_weapon_node as WeaponSprite
-	return null
+	return rig.get_weapon_sprite()
 
 # ========================================================================
 # INTERNAL
