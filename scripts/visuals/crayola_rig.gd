@@ -47,6 +47,11 @@ class_name CrayolaRig
 ## Default 1.2 allows ~69° downward.
 @export var aim_angle_max: float = 1.2
 
+## How much the forearm bends relative to the upper arm during aim.
+## e.g., 0.25 means the forearm adds 25% of the upper arm rotation.
+## The arm solver compensates for this so the weapon tip aligns with the aim direction.
+@export var forearm_aim_ratio: float = 0.25
+
 ## Downward screen-space compensation (pixels) applied while aiming.
 ## Positive values pull the arm aim slightly lower to align hand/muzzle with cursor.
 @export var aim_vertical_compensation: float = 10.0
@@ -57,6 +62,11 @@ var _current_body_anim: StringName = &"idle"
 var _facing_right: bool = true
 var _front_arm_angle: float = 0.0
 var _back_arm_angle: float = 0.0
+
+## Canonical aim direction (world-space, normalized). Shared by arm aiming,
+## aim line, and projectile firing so they all agree. Computed from the rig's
+## aim origin (chest) toward the cursor, clamped to the forward hemisphere.
+var _current_aim_direction: Vector2 = Vector2.RIGHT
 var _stomach_base_position: Vector2 = Vector2.ZERO
 var _front_arm_rest_rotation: float = 0.0
 var _back_arm_rest_rotation: float = 0.0
@@ -316,10 +326,16 @@ func apply_weapon_state(pose: WeaponPoseData) -> void:
 ## Update arm aiming. Call every frame AFTER apply_weapon_state.
 ## aim_active: whether any arm should be code-driven this frame.
 ## aim_world_pos: mouse position in world coordinates.
+##
+## This computes a single canonical aim direction from the rig's aim origin
+## (chest pivot) toward the cursor, clamped to the forward hemisphere so the
+## player can never fire backward. The arm rotation is solved so the weapon
+## tip aligns with this direction (compensating for the forearm bend).
+## Retrieve the result via get_aim_direction() for projectile/aim-line use.
 func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 	if not aim_active:
 		# No aiming — smoothly return to rest pose.
-		# (Especially important for rigs without AnimationTree blend tracks.)
+		_current_aim_direction = Vector2.RIGHT if _facing_right else Vector2.LEFT
 		var reset_lerp := 0.20 * arm_lerp_speed / 18.0
 		_front_arm_angle = lerp_angle(_front_arm_angle, _front_arm_rest_rotation, reset_lerp)
 		_back_arm_angle = lerp_angle(_back_arm_angle, _back_arm_rest_rotation, reset_lerp)
@@ -330,27 +346,57 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		_sync_weapon_rotation_to_hand()
 		return
 
+	# ---- 1. Compute canonical aim direction from aim origin to cursor ----
+	var aim_origin := get_aim_origin()
+	var compensated_aim := aim_world_pos + Vector2(0, aim_vertical_compensation)
+	var raw_dir := compensated_aim - aim_origin
+	var facing_sign := 1.0 if _facing_right else -1.0
+
+	# Enforce minimum distance to avoid wild angles when cursor is on top of player.
+	if raw_dir.length_squared() < 100.0:  # < 10px
+		raw_dir = Vector2(facing_sign, 0.0)
+
+	# ---- 2. Clamp to forward hemisphere (Starbound-style) ----
+	# The character already flips to face the cursor, so this primarily guards
+	# against edge cases where the muzzle is ahead of the player center.
+	if raw_dir.x * facing_sign < 0.0:
+		# Cursor is behind the character — clamp to vertical (straight up/down).
+		raw_dir.x = 0.0
+		if raw_dir.length_squared() < 1.0:
+			raw_dir = Vector2(facing_sign, 0.0)
+
+	_current_aim_direction = raw_dir.normalized()
+
+	# ---- 3. Convert to local arm angle and compensate for forearm bend ----
+	var local_dir := _current_aim_direction
+	if not _facing_right:
+		local_dir.x = -local_dir.x
+
+	# Desired angle for the weapon tip (forearm end) in rig-local space.
+	var desired_angle := local_dir.angle() - PI / 2.0
+	desired_angle = clamp(desired_angle, aim_angle_min, aim_angle_max)
+
+	# The weapon inherits the combined upper arm + forearm rotation.
+	# total_weapon_angle = upper_angle * (1 + forearm_aim_ratio)
+	# Solve for upper_angle so the weapon tip points at desired_angle.
+	var upper_angle := desired_angle / (1.0 + forearm_aim_ratio)
+
+	# ---- 4. Apply to arms ----
 	var flags := _get_current_aim_flags()
-	# Fallback: if no pose/flags are configured, still aim the front arm for free-aim gameplay.
 	if flags == 0:
-		flags = 1
+		flags = 1  # Fallback: aim front arm for free-aim gameplay.
 
 	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
-	var compensated_aim_world_pos := aim_world_pos + Vector2(0, aim_vertical_compensation)
 
-	# Front arm code aim
 	if flags & 1:
-		var target := _compute_aim_angle(front_arm_pivot.global_position, compensated_aim_world_pos)
-		_front_arm_angle = lerp_angle(_front_arm_angle, target, lerp_factor)
+		_front_arm_angle = lerp_angle(_front_arm_angle, upper_angle, lerp_factor)
 		front_arm_pivot.rotation = _front_arm_angle
-		front_forearm.rotation = _front_arm_angle * 0.25
+		front_forearm.rotation = _front_arm_angle * forearm_aim_ratio
 
-	# Back arm code aim
 	if flags & 2:
-		var target := _compute_aim_angle(back_arm_pivot.global_position, compensated_aim_world_pos)
-		_back_arm_angle = lerp_angle(_back_arm_angle, target, lerp_factor)
+		_back_arm_angle = lerp_angle(_back_arm_angle, upper_angle, lerp_factor)
 		back_arm_pivot.rotation = _back_arm_angle
-		back_forearm.rotation = _back_arm_angle * 0.25
+		back_forearm.rotation = _back_arm_angle * forearm_aim_ratio
 
 	_sync_weapon_rotation_to_hand()
 
@@ -396,6 +442,16 @@ func get_sequence_index() -> int:
 	if _active_weapon_pose and _active_weapon_pose.use_arm_sequence:
 		return _sequence_index
 	return -1
+
+## Get the canonical aim direction (world-space, normalized).
+## All systems (projectiles, aim line, arm visuals) should use this to stay in sync.
+func get_aim_direction() -> Vector2:
+	return _current_aim_direction
+
+## Get the aim origin point (world-space). Used as the reference point for
+## computing aim direction. Currently the chest pivot position.
+func get_aim_origin() -> Vector2:
+	return chest_pivot.global_position
 
 # ========================================================================
 # INTERNAL
@@ -451,13 +507,6 @@ func _set_arm_anims(front_anim: StringName, back_anim: StringName) -> void:
 			anim_player.play(back_anim)
 		elif front_anim != &"" and anim_player.has_animation(front_anim):
 			anim_player.play(front_anim)
-
-func _compute_aim_angle(shoulder_pos: Vector2, aim_world_pos: Vector2) -> float:
-	var world_dir := aim_world_pos - shoulder_pos
-	if not _facing_right:
-		world_dir.x = -world_dir.x
-	var aim_angle := world_dir.angle() - PI / 2.0
-	return clamp(aim_angle, aim_angle_min, aim_angle_max)
 
 func _set_tree_body_state(anim: StringName) -> void:
 	if anim_tree == null:

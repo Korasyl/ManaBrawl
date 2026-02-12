@@ -26,13 +26,7 @@ func _ready() -> void:
 	dropdown.item_selected.connect(_on_mode_selected)
 	dropdown.focus_mode = Control.FOCUS_NONE
 
-	get_tree().node_added.connect(_on_tree_changed)
-	get_tree().node_removed.connect(_on_tree_changed)
-
 	_sync_mode_from_scene()
-	_refresh_selector_visibility()
-
-func _on_tree_changed(_node: Node) -> void:
 	_refresh_selector_visibility()
 
 func _sync_mode_from_scene() -> void:
@@ -47,10 +41,6 @@ func _on_mode_selected(index: int) -> void:
 	_set_mode(index)
 
 func _set_mode(mode: int) -> void:
-	# Hide both control panels immediately so "No Opponent" never leaves stale UI visible
-	_set_selector_visible(dummy_selector_path, false)
-	_set_selector_visible(ai_selector_path, false)
-
 	_clear_existing_opponents()
 	var spawned: Node = null
 	match mode:
@@ -58,13 +48,11 @@ func _set_mode(mode: int) -> void:
 			spawned = _spawn_scene(dummy_scene, "TrainingDummy")
 		OpponentMode.AI_OPPONENT:
 			spawned = _spawn_scene(ai_opponent_scene, "AIOpponent")
-		_:
-			pass
 
 	emit_signal("opponent_mode_changed", mode, spawned)
 	_refresh_selector_visibility()
-	# queue_free() removal resolves at frame end, so re-run once deferred for final truth
-	call_deferred("_refresh_selector_visibility")
+	# Deferred refresh_binding so the spawned node is fully in the tree.
+	call_deferred("_refresh_selector_bindings")
 
 
 func _set_selector_visible(path: NodePath, visible: bool) -> void:
@@ -99,17 +87,20 @@ func _resolve_world_root() -> Node:
 	return get_tree().current_scene
 
 func _refresh_selector_visibility() -> void:
-	var dummy_active := get_tree().get_first_node_in_group("training_dummy") != null
-	var ai_active := get_tree().get_first_node_in_group("ai_opponent") != null
+	# Use the dropdown selection as the source of truth — not tree scanning.
+	# Tree scanning is unreliable because queue_free() is deferred.
+	var mode := dropdown.selected as int
+	_set_selector_visible(dummy_selector_path, mode == OpponentMode.TRAINING_DUMMY)
+	_set_selector_visible(ai_selector_path, mode == OpponentMode.AI_OPPONENT)
 
-	var dummy_selector := get_node_or_null(dummy_selector_path)
-	if dummy_selector and dummy_selector is CanvasItem:
-		dummy_selector.visible = dummy_active
-		if dummy_selector.has_method("refresh_binding"):
-			dummy_selector.call("refresh_binding")
-
-	var ai_selector := get_node_or_null(ai_selector_path)
-	if ai_selector and ai_selector is CanvasItem:
-		ai_selector.visible = ai_active
-		if ai_selector.has_method("refresh_binding"):
-			ai_selector.call("refresh_binding")
+func _refresh_selector_bindings() -> void:
+	var mode := dropdown.selected as int
+	match mode:
+		OpponentMode.TRAINING_DUMMY:
+			var sel := get_node_or_null(dummy_selector_path)
+			if sel and sel.has_method("refresh_binding"):
+				sel.call("refresh_binding")
+		OpponentMode.AI_OPPONENT:
+			var sel := get_node_or_null(ai_selector_path)
+			if sel and sel.has_method("refresh_binding"):
+				sel.call("refresh_binding")
