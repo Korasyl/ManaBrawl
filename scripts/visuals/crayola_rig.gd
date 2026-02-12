@@ -73,6 +73,7 @@ var _back_arm_angle: float = 0.0
 ## aim origin (chest) toward the cursor, clamped to the forward hemisphere.
 var _current_aim_direction: Vector2 = Vector2.RIGHT
 var _chest_tilt_angle: float = 0.0
+var _chest_rest_rotation: float = 0.0
 var _stomach_base_position: Vector2 = Vector2.ZERO
 var _front_arm_rest_rotation: float = 0.0
 var _back_arm_rest_rotation: float = 0.0
@@ -165,6 +166,7 @@ signal melee_hitbox_requested(active: bool)
 
 func _ready() -> void:
 	_stomach_base_position = stomach_pivot.position
+	_chest_rest_rotation = chest_pivot.rotation
 	_front_arm_rest_rotation = front_arm_pivot.rotation
 	_back_arm_rest_rotation = back_arm_pivot.rotation
 	_front_forearm_rest_rotation = front_forearm.rotation
@@ -349,9 +351,9 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		back_arm_pivot.rotation = _back_arm_angle
 		front_forearm.rotation = lerp_angle(front_forearm.rotation, _front_forearm_rest_rotation, reset_lerp)
 		back_forearm.rotation = lerp_angle(back_forearm.rotation, _back_forearm_rest_rotation, reset_lerp)
-		# Ease chest tilt back to neutral.
+		# Ease chest tilt back to neutral (rest rotation preserved for hunched rigs, etc.).
 		_chest_tilt_angle = lerp(_chest_tilt_angle, 0.0, reset_lerp)
-		chest_pivot.rotation = _chest_tilt_angle
+		chest_pivot.rotation = _chest_rest_rotation + _chest_tilt_angle
 		_sync_weapon_rotation_to_hand()
 		return
 
@@ -393,7 +395,7 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 
 	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
 	_chest_tilt_angle = lerp(_chest_tilt_angle, chest_tilt_target, lerp_factor)
-	chest_pivot.rotation = _chest_tilt_angle
+	chest_pivot.rotation = _chest_rest_rotation + _chest_tilt_angle
 
 	# ---- 5. Arm angle = remainder after chest tilt, with forearm compensation ----
 	# The arm's desired angle is relative to the chest (its parent), so subtract
