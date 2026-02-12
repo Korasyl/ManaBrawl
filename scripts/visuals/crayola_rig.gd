@@ -52,6 +52,11 @@ class_name CrayolaRig
 ## The arm solver compensates for this so the weapon tip aligns with the aim direction.
 @export var forearm_aim_ratio: float = 0.25
 
+## Maximum chest pivot tilt (radians) when the arm reaches its rotation limits.
+## The upper body leans back/forward to extend aiming range at steep angles.
+## Set to 0 to disable chest tilt entirely.
+@export var chest_tilt_max: float = 0.5
+
 ## Downward screen-space compensation (pixels) applied while aiming.
 ## Positive values pull the arm aim slightly lower to align hand/muzzle with cursor.
 @export var aim_vertical_compensation: float = 10.0
@@ -67,6 +72,7 @@ var _back_arm_angle: float = 0.0
 ## aim line, and projectile firing so they all agree. Computed from the rig's
 ## aim origin (chest) toward the cursor, clamped to the forward hemisphere.
 var _current_aim_direction: Vector2 = Vector2.RIGHT
+var _chest_tilt_angle: float = 0.0
 var _stomach_base_position: Vector2 = Vector2.ZERO
 var _front_arm_rest_rotation: float = 0.0
 var _back_arm_rest_rotation: float = 0.0
@@ -343,6 +349,9 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		back_arm_pivot.rotation = _back_arm_angle
 		front_forearm.rotation = lerp_angle(front_forearm.rotation, _front_forearm_rest_rotation, reset_lerp)
 		back_forearm.rotation = lerp_angle(back_forearm.rotation, _back_forearm_rest_rotation, reset_lerp)
+		# Ease chest tilt back to neutral.
+		_chest_tilt_angle = lerp(_chest_tilt_angle, 0.0, reset_lerp)
+		chest_pivot.rotation = _chest_tilt_angle
 		_sync_weapon_rotation_to_hand()
 		return
 
@@ -357,36 +366,55 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 		raw_dir = Vector2(facing_sign, 0.0)
 
 	# ---- 2. Clamp to forward hemisphere (Starbound-style) ----
-	# The character already flips to face the cursor, so this primarily guards
-	# against edge cases where the muzzle is ahead of the player center.
 	if raw_dir.x * facing_sign < 0.0:
-		# Cursor is behind the character — clamp to vertical (straight up/down).
 		raw_dir.x = 0.0
 		if raw_dir.length_squared() < 1.0:
 			raw_dir = Vector2(facing_sign, 0.0)
 
-	_current_aim_direction = raw_dir.normalized()
+	var hemisphere_dir := raw_dir.normalized()
 
-	# ---- 3. Convert to local arm angle and compensate for forearm bend ----
-	var local_dir := _current_aim_direction
+	# ---- 3. Convert to local arm angle ----
+	var local_dir := hemisphere_dir
 	if not _facing_right:
 		local_dir.x = -local_dir.x
 
-	# Desired angle for the weapon tip (forearm end) in rig-local space.
-	var desired_angle := local_dir.angle() - PI / 2.0
-	desired_angle = clamp(desired_angle, aim_angle_min, aim_angle_max)
+	# Unclamped desired angle for the weapon tip (forearm end) in rig-local space.
+	var unclamped_desired := local_dir.angle() - PI / 2.0
 
-	# The weapon inherits the combined upper arm + forearm rotation.
-	# total_weapon_angle = upper_angle * (1 + forearm_aim_ratio)
-	# Solve for upper_angle so the weapon tip points at desired_angle.
+	# ---- 4. Chest tilt — extend range when arm hits its limits ----
+	var chest_tilt_target := 0.0
+	if chest_tilt_max > 0.0:
+		if unclamped_desired < aim_angle_min:
+			# Aiming steeply up — lean the chest backward.
+			chest_tilt_target = clampf(unclamped_desired - aim_angle_min, -chest_tilt_max, 0.0)
+		elif unclamped_desired > aim_angle_max:
+			# Aiming steeply down — lean the chest forward.
+			chest_tilt_target = clampf(unclamped_desired - aim_angle_max, 0.0, chest_tilt_max)
+
+	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
+	_chest_tilt_angle = lerp(_chest_tilt_angle, chest_tilt_target, lerp_factor)
+	chest_pivot.rotation = _chest_tilt_angle
+
+	# ---- 5. Arm angle = remainder after chest tilt, with forearm compensation ----
+	# The arm's desired angle is relative to the chest (its parent), so subtract
+	# the chest tilt. Then clamp to the arm's own limits.
+	var desired_angle := clampf(unclamped_desired - _chest_tilt_angle, aim_angle_min, aim_angle_max)
+
+	# Solve for upper arm so total rotation (upper + forearm) hits desired_angle.
 	var upper_angle := desired_angle / (1.0 + forearm_aim_ratio)
 
-	# ---- 4. Apply to arms ----
+	# ---- 6. Compute the actual achievable direction and store it ----
+	# This ensures the aim line and projectile match the weapon, with no deadzone.
+	var actual_total := _chest_tilt_angle + desired_angle  # chest + arm contribution
+	var actual_local := Vector2.from_angle(actual_total + PI / 2.0)
+	if not _facing_right:
+		actual_local.x = -actual_local.x
+	_current_aim_direction = actual_local.normalized()
+
+	# ---- 7. Apply to arms ----
 	var flags := _get_current_aim_flags()
 	if flags == 0:
 		flags = 1  # Fallback: aim front arm for free-aim gameplay.
-
-	var lerp_factor := 0.15 * arm_lerp_speed / 18.0
 
 	if flags & 1:
 		_front_arm_angle = lerp_angle(_front_arm_angle, upper_angle, lerp_factor)
