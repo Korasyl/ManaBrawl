@@ -69,6 +69,11 @@ func _spawn_scene(scene: PackedScene, fallback_name: String) -> Node:
 	var inst := scene.instantiate()
 	root.add_child(inst)
 	inst.global_position = spawn_position
+	# _ready() already ran (triggered by add_child) and captured global_position
+	# before we set it above. Overwrite spawn_position so respawns use the
+	# correct location.
+	if "spawn_position" in inst:
+		inst.spawn_position = spawn_position
 	if inst.name == "":
 		inst.name = fallback_name
 	return inst
