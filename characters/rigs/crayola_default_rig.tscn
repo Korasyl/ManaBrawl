@@ -159,6 +159,9 @@ aim_vertical_compensation = 14.0
 [node name="Skeleton2D" type="Skeleton2D" parent="."]
 
 [node name="StomachPivot" type="Bone2D" parent="Skeleton2D"]
+auto_calculate_length_and_angle = false
+bone_angle = -1.5708
+length = 10.0
 rest = Transform2D(1, 0, 0, 1, 0, -25)
 position = Vector2(0, -25)
 
@@ -169,6 +172,9 @@ texture = ExtResource("2_stomach")
 centered = false
 
 [node name="ChestPivot" type="Bone2D" parent="Skeleton2D/StomachPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = -1.695
+length = 8.06
 rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="Chest" type="Sprite2D" parent="Skeleton2D/StomachPivot/ChestPivot"]
@@ -178,6 +184,9 @@ texture = ExtResource("3_chest")
 centered = false
 
 [node name="NeckPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = -1.5708
+length = 2.0
 rest = Transform2D(1, 0, 0, 1, -1, -8)
 position = Vector2(-1, -8)
 
@@ -188,6 +197,9 @@ texture = ExtResource("4_neck")
 centered = false
 
 [node name="HeadPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot/NeckPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = -1.5708
+length = 10.0
 rest = Transform2D(1, 0, 0, 1, 0, -2)
 position = Vector2(0, -2)
 
@@ -198,6 +210,9 @@ texture = ExtResource("5_head")
 centered = false
 
 [node name="FrontArmPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.695
+length = 8.06
 rest = Transform2D(1, 0, 0, 1, -3, -8)
 position = Vector2(-3, -8)
 
@@ -208,6 +223,9 @@ texture = ExtResource("10_farm")
 centered = false
 
 [node name="FrontForearmPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.5708
+length = 8.0
 rest = Transform2D(1, 0, 0, 1, -1, 8)
 position = Vector2(-1, 8)
 
@@ -221,6 +239,9 @@ centered = false
 position = Vector2(0.3, 8)
 
 [node name="BackArmPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.446
+length = 8.06
 rest = Transform2D(1, 0, 0, 1, 2, -8)
 position = Vector2(2, -8)
 
@@ -230,6 +251,9 @@ texture = ExtResource("12_barm")
 centered = false
 
 [node name="BackForearmPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/ChestPivot/BackArmPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.5708
+length = 8.0
 rest = Transform2D(1, 0, 0, 1, 1, 8)
 position = Vector2(1, 8)
 
@@ -243,6 +267,9 @@ centered = false
 position = Vector2(1, 8)
 
 [node name="FrontLegPivot" type="Bone2D" parent="Skeleton2D/StomachPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.695
+length = 8.06
 rest = Transform2D(1, 0, 0, 1, -1, 6)
 position = Vector2(-1, 6)
 
@@ -253,6 +280,9 @@ texture = ExtResource("6_fleg")
 centered = false
 
 [node name="FrontFootPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/FrontLegPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.5708
+length = 6.0
 rest = Transform2D(1, 0, 0, 1, -1, 8)
 position = Vector2(-1, 8)
 
@@ -263,6 +293,9 @@ texture = ExtResource("7_ffoot")
 centered = false
 
 [node name="BackLegPivot" type="Bone2D" parent="Skeleton2D/StomachPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.5708
+length = 7.0
 rest = Transform2D(1, 0, 0, 1, 2, 7)
 position = Vector2(2, 7)
 
@@ -273,6 +306,9 @@ texture = ExtResource("8_bleg")
 centered = false
 
 [node name="BackFootPivot" type="Bone2D" parent="Skeleton2D/StomachPivot/BackLegPivot"]
+auto_calculate_length_and_angle = false
+bone_angle = 1.5708
+length = 6.0
 rest = Transform2D(1, 0, 0, 1, 0, 7)
 position = Vector2(0, 7)
 
