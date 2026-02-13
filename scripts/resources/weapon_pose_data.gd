@@ -22,9 +22,11 @@ class_name WeaponPoseData
 ##   Examples: "hold_tome", "brace_rifle", "hip_rest", "flintlock_hold"
 ##
 ## WEAPON HAND:
-##   "None"  — No weapon sprite shown
 ##   "Front" — Weapon parented to FrontForearmPivot (the hand closer to camera)
 ##   "Back"  — Weapon parented to BackForearmPivot
+##   "Both"  — Two-handed grip. Weapon parented to primary_hand; the off-hand
+##             reaches toward the weapon's SecondaryGrip marker (or uses
+##             secondary_arm_offset as a manual fallback).
 ##
 ## ARM SEQUENCE (Advanced):
 ##   For characters like Spatchcock who alternate arms (fire right, swap to left on cooldown),
@@ -54,7 +56,18 @@ class_name WeaponPoseData
 @export var weapon_scene: PackedScene
 
 ## Which hand holds the weapon.
-@export_enum("None", "Front", "Back") var weapon_hand: String = "None"
+@export_enum("Front", "Back", "Both") var weapon_hand: String = "Front"
+
+## When weapon_hand is "Both", which hand is the primary holder.
+## The weapon scene is physically parented to this hand's anchor.
+## The other hand reaches toward the weapon's SecondaryGrip marker.
+@export_enum("Front", "Back") var primary_hand: String = "Front"
+
+## Angular offset (radians) for the off-hand in "Both" mode.
+## Only used as a fallback when the weapon has no SecondaryGrip marker.
+## Adjusts the off-hand's aim angle relative to the primary aim to
+## spread the hands apart on the weapon shaft (e.g., spear grip spacing).
+@export var secondary_arm_offset: float = 0.0
 
 ## ---- Arm Sequencing (for alternating arm patterns) ----
 

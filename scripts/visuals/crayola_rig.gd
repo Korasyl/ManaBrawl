@@ -311,8 +311,12 @@ func apply_weapon_state(pose: WeaponPoseData) -> void:
 	_sequence_index = 0
 	_sequence_auto_timer = 0.0
 
-	# Determine blend targets from flags (or first sequence step)
+	# Determine blend targets from flags (or first sequence step).
+	# Auto-derive from weapon_hand when aim_arm_flags is 0 (None) so the
+	# AnimationTree blend targets match which arm the rig will actually drive.
 	var flags := _get_current_aim_flags()
+	if flags == 0:
+		flags = _derive_aim_flags_from_weapon_hand()
 	_update_blend_targets(flags)
 
 	# Set arm animations for non-tracking arms
@@ -416,19 +420,28 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 	# ---- 7. Apply to arms ----
 	var flags := _get_current_aim_flags()
 	if flags == 0:
-		flags = 1  # Fallback: aim front arm for free-aim gameplay.
+		flags = _derive_aim_flags_from_weapon_hand()
 
-	if flags & 1:
-		_front_arm_angle = lerp_angle(_front_arm_angle, upper_angle, lerp_factor)
-		front_arm_pivot.rotation = _front_arm_angle
-		front_forearm.rotation = _front_arm_angle * forearm_aim_ratio
+	var weapon_hand := _get_current_weapon_hand()
+	var both_handed := weapon_hand == "Both"
+	var primary_is_front := true
+	if both_handed and _active_weapon_pose:
+		primary_is_front = (_active_weapon_pose.primary_hand == "Front")
 
-	if flags & 2:
-		_back_arm_angle = lerp_angle(_back_arm_angle, upper_angle, lerp_factor)
-		back_arm_pivot.rotation = _back_arm_angle
-		back_forearm.rotation = _back_arm_angle * forearm_aim_ratio
-
-	_sync_weapon_rotation_to_hand()
+	if both_handed and (flags & 3) == 3:
+		# Both-handed + both arms aim: primary arm tracks cursor, secondary
+		# arm reaches toward the weapon's SecondaryGrip marker.
+		_apply_arm_aim(primary_is_front, upper_angle, lerp_factor)
+		_sync_weapon_rotation_to_hand()
+		var secondary_angle := _compute_secondary_grip_angle(primary_is_front, upper_angle)
+		_apply_arm_aim(not primary_is_front, secondary_angle, lerp_factor)
+	else:
+		# Standard: all flagged arms aim at cursor.
+		if flags & 1:
+			_apply_arm_aim(true, upper_angle, lerp_factor)
+		if flags & 2:
+			_apply_arm_aim(false, upper_angle, lerp_factor)
+		_sync_weapon_rotation_to_hand()
 
 ## Advance the arm sequence to the next step (call on fire, cooldown start, etc.)
 func advance_sequence() -> void:
@@ -486,6 +499,38 @@ func get_aim_origin() -> Vector2:
 # ========================================================================
 # INTERNAL
 # ========================================================================
+
+func _derive_aim_flags_from_weapon_hand() -> int:
+	var hand := _get_current_weapon_hand()
+	match hand:
+		"Front": return 1
+		"Back": return 2
+		"Both": return 3
+	return 1  # Fallback: front arm
+
+func _apply_arm_aim(is_front: bool, angle: float, lerp_factor: float) -> void:
+	if is_front:
+		_front_arm_angle = lerp_angle(_front_arm_angle, angle, lerp_factor)
+		front_arm_pivot.rotation = _front_arm_angle
+		front_forearm.rotation = _front_arm_angle * forearm_aim_ratio
+	else:
+		_back_arm_angle = lerp_angle(_back_arm_angle, angle, lerp_factor)
+		back_arm_pivot.rotation = _back_arm_angle
+		back_forearm.rotation = _back_arm_angle * forearm_aim_ratio
+
+func _compute_secondary_grip_angle(primary_is_front: bool, primary_angle: float) -> float:
+	var ws := get_weapon_sprite()
+	if ws and ws.secondary_grip:
+		var grip_pos := ws.secondary_grip.global_position
+		var pivot: Node2D = back_arm_pivot if primary_is_front else front_arm_pivot
+		var delta := grip_pos - pivot.global_position
+		var local_delta := delta.rotated(-chest_pivot.global_rotation)
+		var raw_angle := local_delta.angle() - PI / 2.0
+		return clampf(raw_angle, aim_angle_min, aim_angle_max) / (1.0 + forearm_aim_ratio)
+	# Fallback: offset from primary angle
+	if _active_weapon_pose:
+		return primary_angle + _active_weapon_pose.secondary_arm_offset
+	return primary_angle
 
 func _get_current_aim_flags() -> int:
 	if _active_weapon_pose == null:
@@ -571,7 +616,7 @@ func _on_animation_finished(anim_name: StringName) -> void:
 # ---- Weapon Management ----
 
 func _attach_weapon(pose: WeaponPoseData) -> void:
-	if pose.weapon_scene == null or pose.weapon_hand == "None":
+	if pose.weapon_scene == null:
 		_detach_weapon()
 		return
 
@@ -623,6 +668,12 @@ func _get_weapon_parent(hand: String) -> Node2D:
 			if back_hand_weapon_anchor:
 				return back_hand_weapon_anchor
 			return back_forearm
+		"Both":
+			# Parent to the primary hand's anchor.
+			var primary := "Front"
+			if _active_weapon_pose:
+				primary = _active_weapon_pose.primary_hand
+			return _get_weapon_parent(primary)
 		_:
 			return null
 
@@ -639,12 +690,17 @@ func _sync_weapon_visual_to_hand(hand: String) -> void:
 		"Back":
 			if back_hand_sprite:
 				_current_weapon_node.z_index = back_hand_sprite.z_index
+		"Both":
+			var primary := "Front"
+			if _active_weapon_pose:
+				primary = _active_weapon_pose.primary_hand
+			_sync_weapon_visual_to_hand(primary)
 		_:
 			pass
 
 func _get_current_weapon_hand() -> String:
 	if _active_weapon_pose == null:
-		return "None"
+		return "Front"
 	if _active_weapon_pose.use_arm_sequence and not _active_weapon_pose.sequence_steps.is_empty():
 		var step := _active_weapon_pose.sequence_steps[_sequence_index]
 		return step.weapon_hand
@@ -655,7 +711,11 @@ func _sync_weapon_rotation_to_hand() -> void:
 		return
 
 	var hand := _get_current_weapon_hand()
-	match hand:
+	var effective_hand := hand
+	if hand == "Both" and _active_weapon_pose:
+		effective_hand = _active_weapon_pose.primary_hand
+
+	match effective_hand:
 		"Front":
 			if front_hand_weapon_anchor:
 				_current_weapon_node.global_rotation = front_hand_weapon_anchor.global_rotation
