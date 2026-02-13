@@ -120,7 +120,7 @@ extends CrayolaRig
 class_name AegisRig
 
 ## Aegis has a shield collision area on his back arm for projectile deflection.
-@onready var shield_area: Area2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/ShieldArea
+@onready var shield_area: Area2D = $StomachPivot/ChestPivot/BackArmPivot/ShieldArea
 
 func _ready() -> void:
     super._ready()
@@ -197,8 +197,8 @@ Build rigs incrementally — you won't crash from missing clips.
 
 ## System 2: Arm Animations
 
-Arm-only clips that play on non-aiming arms. Only keyframe arm bone pivots
-(under Skeleton2D): `FrontArmPivot`, `FrontForearmPivot`, `BackArmPivot`, `BackForearmPivot`
+Arm-only clips that play on non-aiming arms. Only keyframe arm pivots:
+`FrontArmPivot`, `FrontForearmPivot`, `BackArmPivot`, `BackForearmPivot`
 
 **Naming convention:** `arm_[description]`
 
