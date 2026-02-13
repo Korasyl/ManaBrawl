@@ -34,13 +34,122 @@ length = 0.45
 resource_name = "oneshot_light_attack"
 length = 0.3
 
+[sub_resource type="Animation" id="Animation_arm_fencer_offhand"]
+resource_name = "arm_fencer_offhand"
+length = 2.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("StomachPivot/ChestPivot/FrontArmPivot:rotation")
+tracks/0/interp = 2
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [2.3, 2.35, 2.3]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot:rotation")
+tracks/1/interp = 2
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 1, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [-1.6, -1.65, -1.6]
+}
+
+[sub_resource type="Animation" id="Animation_oneshot_wand_cast_1"]
+resource_name = "oneshot_wand_cast_1"
+length = 0.3
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("StomachPivot/ChestPivot/BackArmPivot:rotation")
+tracks/0/interp = 1
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.07, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3, 1.5),
+"update": 0,
+"values": [-1.0, -0.85, -1.25, -1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot:rotation")
+tracks/1/interp = 1
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.07, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3, 1.5),
+"update": 0,
+"values": [-0.2, 0.3, -0.6, -0.2]
+}
+
+[sub_resource type="Animation" id="Animation_oneshot_wand_cast_2"]
+resource_name = "oneshot_wand_cast_2"
+length = 0.3
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("StomachPivot/ChestPivot/BackArmPivot:rotation")
+tracks/0/interp = 1
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.17, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3, 1.5),
+"update": 0,
+"values": [-1.0, -0.65, -1.5, -1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot:rotation")
+tracks/1/interp = 1
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.17, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3, 1.5),
+"update": 0,
+"values": [-0.2, 0.4, -0.7, -0.2]
+}
+
+[sub_resource type="Animation" id="Animation_oneshot_wand_cast_3"]
+resource_name = "oneshot_wand_cast_3"
+length = 0.3
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("StomachPivot/ChestPivot/BackArmPivot:rotation")
+tracks/0/interp = 1
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.09, 0.18, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3.5, 1.5),
+"update": 0,
+"values": [-1.0, -0.5, -1.6, -1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot:rotation")
+tracks/1/interp = 1
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.09, 0.18, 0.3),
+"transitions": PackedFloat32Array(1, 0.5, 3.5, 1.5),
+"update": 0,
+"values": [-0.2, 0.5, -0.85, -0.2]
+}
+
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]
 _data = {
+&"arm_fencer_offhand": SubResource("Animation_arm_fencer_offhand"),
 &"arm_hip_rest": SubResource("Animation_arm_hip_rest"),
 &"arm_wand_ready": SubResource("Animation_arm_wand_ready"),
 &"idle": SubResource("Animation_idle"),
 &"oneshot_heavy_attack": SubResource("Animation_oneshot_heavy_attack"),
-&"oneshot_light_attack": SubResource("Animation_oneshot_light_attack")
+&"oneshot_light_attack": SubResource("Animation_oneshot_light_attack"),
+&"oneshot_wand_cast_1": SubResource("Animation_oneshot_wand_cast_1"),
+&"oneshot_wand_cast_2": SubResource("Animation_oneshot_wand_cast_2"),
+&"oneshot_wand_cast_3": SubResource("Animation_oneshot_wand_cast_3")
 }
 
 [node name="CrayolaRig" type="Node2D" unique_id=87643186]

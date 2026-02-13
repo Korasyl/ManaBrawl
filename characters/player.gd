@@ -1798,9 +1798,10 @@ func fire_projectile(mode: RangedModeData):
 	if debug_hud:
 		debug_hud.log_action("[color=yellow]%s[/color]" % mode.mode_name)
 
-	# Advance arm sequence for rigs using alternating weapon hands.
+	# Advance arm sequence and play fire/cast animation.
 	if crayola_rig:
 		crayola_rig.advance_sequence()
+		crayola_rig.play_cast_animation()
 
 func _get_ranged_target_near_cursor(max_range_from_cursor: float, allow_self: bool = true, check_los: bool = false) -> Node:
 	var mouse_pos := get_global_mouse_position()
@@ -2188,6 +2189,9 @@ func cast_spell(index: int):
 			_fire_spell_projectile(spell)
 		"targeted":
 			_fire_targeted_projectile(spell, target_body)
+
+	if crayola_rig:
+		crayola_rig.play_cast_animation()
 
 	suppress_light_attack_release_once = true
 	post_spell_melee_lockout_timer = POST_SPELL_MELEE_LOCKOUT
