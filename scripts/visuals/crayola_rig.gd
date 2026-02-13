@@ -107,16 +107,17 @@ var _fire_anim_index: int = -1
 # ---- Node References ----
 # Subclasses can override these paths if their hierarchy differs.
 
-@onready var stomach_pivot: Node2D = $StomachPivot
-@onready var chest_pivot: Node2D = $StomachPivot/ChestPivot
-@onready var back_arm_pivot: Node2D = $StomachPivot/ChestPivot/BackArmPivot
-@onready var back_forearm: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot
-@onready var back_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHand
-@onready var back_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor if has_node("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor") else null
-@onready var front_arm_pivot: Node2D = $StomachPivot/ChestPivot/FrontArmPivot
-@onready var front_forearm: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot
-@onready var front_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHand
-@onready var front_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor if has_node("StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor") else null
+@onready var skeleton: Skeleton2D = $Skeleton2D
+@onready var stomach_pivot: Bone2D = $Skeleton2D/StomachPivot
+@onready var chest_pivot: Bone2D = $Skeleton2D/StomachPivot/ChestPivot
+@onready var back_arm_pivot: Bone2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot
+@onready var back_forearm: Bone2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot
+@onready var back_hand_sprite: Sprite2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHand
+@onready var back_hand_weapon_anchor: Node2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor if has_node("Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor") else null
+@onready var front_arm_pivot: Bone2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot
+@onready var front_forearm: Bone2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot
+@onready var front_hand_sprite: Sprite2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHand
+@onready var front_hand_weapon_anchor: Node2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor if has_node("Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor") else null
 
 ## AnimationPlayer for body + arm clips. Add this node to your rig scene.
 @onready var anim_player: AnimationPlayer = $AnimationPlayer if has_node("AnimationPlayer") else null
