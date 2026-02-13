@@ -7,7 +7,7 @@ CharacterStats
 ├── rig_scene ──────────► CrayolaRig (per-character scene)
 │                         ├── AnimationPlayer   (all animation clips)
 │                         ├── AnimationTree     (body/arm/oneshot blending)
-│                         ├── Skeleton pivots   (Node2D body part hierarchy)
+│                         ├── Skeleton2D        (Bone2D hierarchy, 10× authoring scale)
 │                         └── WeaponSprite      (attached dynamically)
 │
 ├── default_weapon_pose ─► WeaponPoseData (arm behavior when idle)
@@ -100,11 +100,24 @@ resources/
 
 ## System 1: Character Rigs
 
+### Authoring Scale (10×)
+
+Rigs are authored at **10× scale** so Bone2D gizmos are large enough to
+select and manipulate in the editor. The constant `AUTHORING_SCALE = 10.0`
+lives in `crayola_rig.gd`. At runtime, the root is scaled by
+`rig_scale / AUTHORING_SCALE` (default 2.0 / 10 = 0.2), producing the
+same on-screen size as the original 1× rig. Sprite PNGs stay at their
+native resolution (e.g. 10×41); each Sprite2D node has `scale = (10, 10)`
+in the scene to match the inflated bone positions.
+
+**When editing positions:** all pivot and sprite offsets are in 10× space.
+To convert from pixel-art coordinates, multiply by 10.
+
 ### Creating a New Rig
 
 1. Duplicate `crayola_rig.tscn` → `characters/rigs/[name]_rig.tscn`
 2. Replace sprite textures with character art
-3. Adjust pivot positions for different proportions
+3. Adjust pivot (Bone2D) positions for different proportions (remember: 10× space)
 4. Add `AnimationPlayer` as a direct child of root
 5. Create animation clips (see below)
 6. Optionally add `AnimationTree` for blending
@@ -120,7 +133,7 @@ extends CrayolaRig
 class_name AegisRig
 
 ## Aegis has a shield collision area on his back arm for projectile deflection.
-@onready var shield_area: Area2D = $StomachPivot/ChestPivot/BackArmPivot/ShieldArea
+@onready var shield_area: Area2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/ShieldArea
 
 func _ready() -> void:
     super._ready()

@@ -1,6 +1,12 @@
 extends Node2D
 class_name CrayolaRig
 
+## Authoring scale: the rig is built at 10× in the editor so that Bone2D
+## gizmos are large enough to select and manipulate comfortably.
+## At runtime the root is scaled by  rig_scale / AUTHORING_SCALE  so the
+## on-screen size is identical to the original 1× rig with rig_scale applied.
+const AUTHORING_SCALE: float = 10.0
+
 ## CrayolaRig — Base class for all character rigs.
 ##
 ## ARCHITECTURE:
@@ -107,16 +113,16 @@ var _fire_anim_index: int = -1
 # ---- Node References ----
 # Subclasses can override these paths if their hierarchy differs.
 
-@onready var stomach_pivot: Node2D = $StomachPivot
-@onready var chest_pivot: Node2D = $StomachPivot/ChestPivot
-@onready var back_arm_pivot: Node2D = $StomachPivot/ChestPivot/BackArmPivot
-@onready var back_forearm: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot
-@onready var back_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHand
-@onready var back_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor if has_node("StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor") else null
-@onready var front_arm_pivot: Node2D = $StomachPivot/ChestPivot/FrontArmPivot
-@onready var front_forearm: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot
-@onready var front_hand_sprite: Sprite2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHand
-@onready var front_hand_weapon_anchor: Node2D = $StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor if has_node("StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor") else null
+@onready var stomach_pivot: Node2D = $Skeleton2D/StomachPivot
+@onready var chest_pivot: Node2D = $Skeleton2D/StomachPivot/ChestPivot
+@onready var back_arm_pivot: Node2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot
+@onready var back_forearm: Node2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot
+@onready var back_hand_sprite: Sprite2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHand
+@onready var back_hand_weapon_anchor: Node2D = $Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor if has_node("Skeleton2D/StomachPivot/ChestPivot/BackArmPivot/BackForearmPivot/BackHandWeaponAnchor") else null
+@onready var front_arm_pivot: Node2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot
+@onready var front_forearm: Node2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot
+@onready var front_hand_sprite: Sprite2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHand
+@onready var front_hand_weapon_anchor: Node2D = $Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor if has_node("Skeleton2D/StomachPivot/ChestPivot/FrontArmPivot/FrontForearmPivot/FrontHandWeaponAnchor") else null
 
 ## AnimationPlayer for body + arm clips. Add this node to your rig scene.
 @onready var anim_player: AnimationPlayer = $AnimationPlayer if has_node("AnimationPlayer") else null
@@ -180,7 +186,7 @@ func _ready() -> void:
 	_back_forearm_rest_rotation = back_forearm.rotation
 	_front_arm_angle = _front_arm_rest_rotation
 	_back_arm_angle = _back_arm_rest_rotation
-	scale = Vector2.ONE * rig_scale
+	scale = Vector2.ONE * rig_scale / AUTHORING_SCALE
 	_apply_pixel_settings(self)
 
 	if anim_player and anim_player.has_signal("animation_finished"):
@@ -210,7 +216,7 @@ func set_facing_right(value: bool) -> void:
 	if value == _facing_right:
 		return
 	_facing_right = value
-	scale.x = abs(rig_scale) if _facing_right else -abs(rig_scale)
+	scale.x = (abs(rig_scale) / AUTHORING_SCALE) if _facing_right else -(abs(rig_scale) / AUTHORING_SCALE)
 
 ## Play a melee attack animation. Called by player on perform_light_attack / perform_heavy_attack.
 ## Returns false if the animation doesn't exist.
