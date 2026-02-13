@@ -32,7 +32,7 @@ class_name ArmSequenceStep
 @export var back_arm_animation: StringName = &""
 
 ## Weapon hand for this step (weapon may swap between hands).
-@export_enum("None", "Front", "Back") var weapon_hand: String = "Front"
+@export_enum("None", "Front", "Back", "Both") var weapon_hand: String = "Front"
 
 ## One-shot animation to play when transitioning INTO this step.
 ## e.g., "draw_flintlock_left", "toss_flintlock_right"

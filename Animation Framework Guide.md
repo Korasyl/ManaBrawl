@@ -404,7 +404,7 @@ aim_arm_flags: None (0)
 front_arm_animation: "arm_theatre_idle"
 back_arm_animation: "arm_theatre_idle"
 weapon_scene: null
-weapon_hand: None
+weapon_hand: Front
 ```
 
 **Ranged (Flintlock Juggle):**

@@ -58,12 +58,18 @@ class_name WeaponSprite
 ## e.g., center of Aegis's shield face.
 @export var impact_point_path: NodePath = "ImpactPoint"
 
+## Where the off-hand grips in two-handed ("Both") weapon mode.
+## e.g., lower shaft of a spear, bow riser grip.
+## If absent, the rig uses WeaponPoseData.secondary_arm_offset as a manual fallback.
+@export var secondary_grip_path: NodePath = "SecondaryGrip"
+
 # ---- Resolved References (populated in _ready) ----
 
 var muzzle_point: Marker2D = null
 var effect_anchor: Marker2D = null
 var trail_origin: Marker2D = null
 var impact_point: Marker2D = null
+var secondary_grip: Marker2D = null
 
 # ---- Active Effects ----
 
@@ -93,6 +99,8 @@ func _ready() -> void:
 		trail_origin = get_node_or_null(trail_origin_path) as Marker2D
 	if impact_point_path != NodePath(""):
 		impact_point = get_node_or_null(impact_point_path) as Marker2D
+	if secondary_grip_path != NodePath(""):
+		secondary_grip = get_node_or_null(secondary_grip_path) as Marker2D
 
 	# Apply pixel art settings to all child sprites
 	_apply_pixel_settings(self)
@@ -119,6 +127,9 @@ func get_trail_origin_position() -> Vector2:
 
 func get_impact_position() -> Vector2:
 	return impact_point.global_position if impact_point else global_position
+
+func get_secondary_grip_position() -> Vector2:
+	return secondary_grip.global_position if secondary_grip else global_position
 
 ## Spawn a VFX scene at a marker point. Returns the spawned node.
 func spawn_effect_at(marker_name: String, effect_scene: PackedScene, parent_to_weapon: bool = false) -> Node:
@@ -184,6 +195,8 @@ func _get_marker_node(marker_name: String) -> Node2D:
 			return trail_origin
 		"impact":
 			return impact_point
+		"secondary_grip":
+			return secondary_grip
 	return null
 
 func _apply_pixel_settings(root: Node) -> void:
