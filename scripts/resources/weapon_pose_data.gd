@@ -85,6 +85,13 @@ class_name WeaponPoseData
 ## How quickly arms blend into this pose (seconds). 0 = instant snap.
 @export var blend_in_time: float = 0.15
 
+## One-shot animations to play when firing/casting in this pose.
+## The weapon arm(s) temporarily switch from code-driven aim to
+## animation-driven for the duration. The rig cycles through these
+## sequentially so the same animation never plays twice in a row.
+## e.g., ["oneshot_wand_cast_1", "oneshot_wand_cast_2", "oneshot_wand_cast_3"]
+@export var fire_animations: Array[StringName] = []
+
 ## Animation to play as a one-shot when ENTERING this weapon state.
 ## e.g., "draw_flintlock", "open_tome". Leave empty for no transition.
 @export var enter_animation: StringName = &""

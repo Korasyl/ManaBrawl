@@ -97,6 +97,13 @@ var _blend_speed: float = 10.0
 ## Tracks the currently playing oneshot animation name (for signal filtering).
 var _active_oneshot_anim: StringName = &""
 
+## Bitmask of arms whose code-driven aim is suppressed by an active one-shot.
+## Reset to 0 when the one-shot finishes.
+var _oneshot_aim_override: int = 0
+
+## Cycles through fire_animations so the same one never plays twice in a row.
+var _fire_anim_index: int = -1
+
 # ---- Node References ----
 # Subclasses can override these paths if their hierarchy differs.
 
@@ -307,9 +314,10 @@ func apply_weapon_state(pose: WeaponPoseData) -> void:
 	if previous and previous.exit_animation != &"":
 		_play_oneshot(previous.exit_animation)
 
-	# Reset sequence
+	# Reset sequence and fire animation cycle
 	_sequence_index = 0
 	_sequence_auto_timer = 0.0
+	_fire_anim_index = -1
 
 	# Determine blend targets from flags (or first sequence step).
 	# Auto-derive from weapon_hand when aim_arm_flags is 0 (None) so the
@@ -422,6 +430,9 @@ func update_arm_aim(aim_active: bool, aim_world_pos: Vector2) -> void:
 	if flags == 0:
 		flags = _derive_aim_flags_from_weapon_hand()
 
+	# Suppress code aim on arms overridden by an active one-shot (e.g., cast animation).
+	flags = flags & ~_oneshot_aim_override
+
 	var weapon_hand := _get_current_weapon_hand()
 	var both_handed := weapon_hand == "Both"
 	var primary_is_front := true
@@ -495,6 +506,24 @@ func get_aim_direction() -> Vector2:
 ## computing aim direction. Currently the chest pivot position.
 func get_aim_origin() -> Vector2:
 	return chest_pivot.global_position
+
+## Play a one-shot animation that temporarily overrides code-driven aim
+## on the specified arms. Use for cast/attack animations during ranged mode.
+## override_flags: bitmask of arms to suppress (1=Front, 2=Back, 3=Both).
+func play_aim_override_oneshot(anim_name: StringName, override_flags: int = 3) -> void:
+	_oneshot_aim_override = override_flags
+	_play_oneshot(anim_name)
+
+## Play the next fire/cast animation from the active WeaponPoseData.
+## Cycles sequentially through fire_animations so the same one never repeats.
+## Automatically suppresses code aim on the weapon arm(s) for the duration.
+func play_cast_animation() -> void:
+	if _active_weapon_pose == null or _active_weapon_pose.fire_animations.is_empty():
+		return
+	var anims := _active_weapon_pose.fire_animations
+	_fire_anim_index = (_fire_anim_index + 1) % anims.size()
+	var override_flags := _derive_aim_flags_from_weapon_hand()
+	play_aim_override_oneshot(anims[_fire_anim_index], override_flags)
 
 # ========================================================================
 # INTERNAL
@@ -611,6 +640,7 @@ func _on_animation_finished(anim_name: StringName) -> void:
 	# Only emit for oneshot/transition animations, not looping body anims.
 	if anim_name == _active_oneshot_anim:
 		_active_oneshot_anim = &""
+		_oneshot_aim_override = 0
 		transition_finished.emit(anim_name)
 
 # ---- Weapon Management ----

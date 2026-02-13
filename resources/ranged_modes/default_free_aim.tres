@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="RangedModeData" format=3 uid="uid://bklsp5uj1r7r3"]
 
 [ext_resource type="Script" uid="uid://k6koplk8b1p2" path="res://scripts/combat/ranged_mode_data.gd" id="1_rmd"]
-[ext_resource type="Resource" path="res://resources/weapon_poses/crayola_default_pose.tres" id="2_pose"]
+[ext_resource type="Resource" path="res://resources/weapon_poses/crayola_ranged_pose.tres" id="2_pose"]
 
 [resource]
 script = ExtResource("1_rmd")
